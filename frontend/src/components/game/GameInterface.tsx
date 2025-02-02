@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { gameApi } from '../../services/api';
 
 interface GameInterfaceProps {
+  gameId: string;
+  playerId: string;
   onComplete: (wpm: number, accuracy: number) => void;
 }
 
-const GameInterface: React.FC<GameInterfaceProps> = ({ onComplete }) => {
+const GameInterface: React.FC<GameInterfaceProps> = ({ gameId, playerId, onComplete }) => {
   const [input, setInput] = useState('');
   const [wpm, setWpm] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
+  const [progress, setProgress] = useState(0);
   const sampleText = "The quick brown fox jumps over the lazy dog. As the sun sets behind the mountains, casting long shadows across the valley, a gentle breeze rustles through the leaves.";
   
   useEffect(() => {
@@ -31,7 +35,23 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ onComplete }) => {
       );
       onComplete(wpm, accuracy);
     }
-  }, [input, startTime, sampleText, wpm, onComplete]);
+
+    // Send progress updates periodically
+    const interval = setInterval(() => {
+      if (gameId && progress < 100) {
+        gameApi.updateProgress(gameId, {
+          playerId,
+          progress,
+          wpm: calculateWPM(),
+          accuracy: calculateAccuracy()
+        });
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [input, startTime, sampleText, wpm, onComplete, gameId, playerId, progress]);
 
   const accuracy = input.length > 0
     ? Math.round(
@@ -40,6 +60,26 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ onComplete }) => {
           100
       )
     : 0;
+
+  const calculateWPM = () => {
+    if (startTime) {
+      const timeElapsed = (Date.now() - startTime) / 1000 / 60; // in minutes
+      const wordsTyped = input.length / 5; // assuming average word length of 5 characters
+      return Math.round(wordsTyped / timeElapsed);
+    }
+    return 0;
+  };
+
+  const calculateAccuracy = () => {
+    if (input.length > 0 && sampleText.length > 0) {
+      return Math.round(
+        (input.split('').filter((char, i) => char === sampleText[i]).length /
+          input.length) *
+          100
+      );
+    }
+    return 0;
+  };
 
   return (
     <div className="space-y-8">

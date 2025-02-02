@@ -1,62 +1,45 @@
 version: '3.8'
 
 services:
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:80"
-  #   depends_on:
-  #     - backend
-  #   environment:
-  #     - VITE_API_URL=http://backend:8080  # Fixed: Use service name instead of localhost
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8080
 
   backend:
-    build:
+    build: 
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
     depends_on:
-      - redis
       - postgres
+      - redis
     environment:
-      - DB_HOST=postgres
-      - DB_USER=typerace
-      - DB_PASSWORD=typerace123
-      - DB_NAME=typerace
-      - REDIS_URL=redis:6379
-      - JWT_SECRET=your-secret-key
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/typerace
+      - REDIS_URL=redis://redis:6379
 
   postgres:
-    image: postgres:15-alpine
-    # ports:
-    #   - "5432:5432"  # Optional: Uncomment if you need external DB access
+    image: postgres:14
+    ports:
+      - "5432:5432"
     environment:
-      - POSTGRES_USER=typerace
-      - POSTGRES_PASSWORD=typerace123
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=typerace
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U typerace"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   redis:
-    image: redis:7-alpine
-    # ports:
-    #   - "6379:6379"  # Optional: Uncomment if you need external Redis access
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    image: redis:7
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:
-  redis_data:

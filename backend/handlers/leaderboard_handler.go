@@ -1,54 +1,68 @@
 package handlers
 
 import (
-    "encoding/json"
-    "net/http"
-    "sort"
+	"encoding/json"
+	"net/http"
 
-    // "typerace/models"
+	// "typerace/models"
+	"gorm.io/gorm"
 )
 
 type LeaderboardHandler struct {
-    gameHandler *GameHandler
+	db *gorm.DB
 }
 
-func NewLeaderboardHandler() *LeaderboardHandler {
-    return &LeaderboardHandler{}
+func NewLeaderboardHandler(db *gorm.DB) *LeaderboardHandler {
+	return &LeaderboardHandler{
+		db: db,
+	}
 }
 
 type LeaderboardEntry struct {
-    UserID    string  `json:"userId"`
-    Username  string  `json:"username"`
-    WPM       int     `json:"wpm"`
-    Accuracy  float64 `json:"accuracy"`
-    Wins      int     `json:"wins"`
+	UserID   string  `json:"userId"`
+	Username string  `json:"username"`
+	WPM      int     `json:"wpm"`
+	Accuracy float64 `json:"accuracy"`
+	Wins     int     `json:"wins"`
 }
 
 func (h *LeaderboardHandler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
-    // In a real application, this would fetch from a database
-    // For now, we'll create some dummy data
-    entries := []LeaderboardEntry{
-        {
-            UserID:    "1",
-            Username:  "SpeedDemon",
-            WPM:       120,
-            Accuracy:  98.5,
-            Wins:      10,
-        },
-        {
-            UserID:    "2",
-            Username:  "TypeMaster",
-            WPM:       115,
-            Accuracy:  97.8,
-            Wins:      8,
-        },
-        // Add more entries as needed
-    }
+	var entries []LeaderboardEntry
 
-    // Sort by WPM (you could add different sorting options)
-    sort.Slice(entries, func(i, j int) bool {
-        return entries[i].WPM > entries[j].WPM
-    })
+	// Query the database for all users and their stats
+	rows, err := h.db.Raw(`
+        SELECT 
+            u.id as user_id,
+            u.username,
+            AVG(p.wpm) as avg_wpm,
+            AVG(p.accuracy) as avg_accuracy,
+            COUNT(CASE WHEN p.wpm = (
+                SELECT MAX(p2.wpm) 
+                FROM players p2 
+                WHERE p2.game_id = p.game_id
+            ) THEN 1 END) as wins
+        FROM users u
+        LEFT JOIN players p ON p.user_id = u.id 
+        GROUP BY u.id, u.username
+        ORDER BY avg_wpm DESC
+        LIMIT 100
+    `).Rows()
 
-    json.NewEncoder(w).Encode(entries)
+	if err != nil {
+		http.Error(w, "Error fetching leaderboard data", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var entry LeaderboardEntry
+		err := rows.Scan(&entry.UserID, &entry.Username, &entry.WPM, &entry.Accuracy, &entry.Wins)
+		if err != nil {
+			http.Error(w, "Error scanning leaderboard data", http.StatusInternalServerError)
+			return
+		}
+		entries = append(entries, entry)
+	}
+
+	json.NewEncoder(w).Encode(entries)
 }

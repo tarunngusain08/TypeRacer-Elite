@@ -1,8 +1,12 @@
 package models
 
 import (
+	"log"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type GameStatus string
@@ -14,43 +18,58 @@ const (
 )
 
 type Game struct {
-	ID        string      `json:"id"`
-	Status    GameStatus  `json:"status"`
-	Text      string      `json:"text"`
-	StartTime *time.Time  `json:"startTime,omitempty"`
-	Players   []*Player   `json:"players"`
-	Mu        sync.Mutex
-	Category    string      `json:"category"`
-	Difficulty  string      `json:"difficulty"`
-	IsPrivate   bool        `json:"isPrivate"`
-	Password    string      `json:"-"`
-	ReplayData  []GameEvent `json:"replayData,omitempty"`
-	CreatedBy   string      `json:"createdBy"`
-	TournamentID string     `json:"tournamentId,omitempty"`
+	ID           uuid.UUID   `gorm:"type:uuid;primary_key;"`
+	Status       GameStatus  `gorm:"type:varchar(20);not null"`
+	Text         string      `gorm:"not null"`
+	Players      []Player    `gorm:"many2many:game_players;"`
+	ReplayData   []GameEvent `gorm:"type:jsonb"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Mu           sync.Mutex
+	Category     string `json:"category"`
+	Difficulty   string `json:"difficulty"`
+	IsPrivate    bool   `json:"isPrivate"`
+	Password     string `json:"-"`
+	CreatedBy    string `json:"createdBy"`
+	TournamentID string `json:"tournamentId,omitempty"`
 }
 
 type Player struct {
-	ID       string  `json:"id"`
-	Name     string  `json:"name"`
-	WPM      int     `json:"wpm"`
-	Accuracy float64 `json:"accuracy"`
-	Progress float64 `json:"progress"`
-	Avatar   string  `json:"avatar"`
+	ID       uuid.UUID `gorm:"type:uuid;primary_key;"`
+	UserID   uuid.UUID `gorm:"type:uuid;"`
+	GameID   uuid.UUID `gorm:"type:uuid;"`
+	Name     string    `json:"name"`
+	Progress float64   `gorm:"default:0"`
+	WPM      int       `gorm:"default:0"`
+	Accuracy float64   `gorm:"default:0"`
+	Avatar   string    `json:"avatar"`
 }
 
 type GameEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	PlayerID  string    `json:"playerId"`
-	Type      string    `json:"type"` // progress, error, complete
+	Type      string    `json:"type"`
 	Data      any       `json:"data"`
 }
 
+func (g *Game) BeforeCreate(tx *gorm.DB) error {
+	if g.ID == uuid.Nil {
+		g.ID = uuid.New()
+	}
+	return nil
+}
+
 func NewGame(id string, text string) *Game {
+	uuid, err := uuid.Parse(id)
+	if err != nil {
+		log.Printf("Failed to parse game ID %s: %v", id, err)
+		return nil
+	}
 	return &Game{
-		ID:      id,
-		Status:  Waiting,
+		ID:      uuid,
+		Status:  string(Waiting),
 		Text:    text,
-		Players: make([]*Player, 0),
+		Players: make([]Player, 0),
 	}
 }
 
@@ -62,7 +81,7 @@ func (g *Game) AddPlayer(player *Player) bool {
 		return false
 	}
 
-	g.Players = append(g.Players, player)
+	g.Players = append(g.Players, *player)
 	return true
 }
 
@@ -71,6 +90,6 @@ func (g *Game) Start() {
 	defer g.Mu.Unlock()
 
 	now := time.Now()
-	g.StartTime = &now
-	g.Status = Playing
+	g.CreatedAt = now
+	g.Status = string(Playing)
 }

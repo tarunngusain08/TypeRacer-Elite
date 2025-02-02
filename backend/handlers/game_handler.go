@@ -5,12 +5,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"typerace/models"
 	ws "typerace/websocket"
+
+	"github.com/go-redis/redis/v8"
 )
 
 var upgrader = websocket.Upgrader{
@@ -22,14 +25,18 @@ var upgrader = websocket.Upgrader{
 }
 
 type GameHandler struct {
-	hub   *ws.Hub
-	games map[string]*models.Game
+	Hub   *ws.Hub                 `json:"hub,omitempty"`
+	db    *gorm.DB                `json:"db,omitempty"`
+	redis *redis.Client           `json:"redis,omitempty"`
+	Games map[string]*models.Game `json:"games,omitempty"`
 }
 
-func NewGameHandler(hub *ws.Hub) *GameHandler {
+func NewGameHandler(hub *ws.Hub, db *gorm.DB, redis *redis.Client) *GameHandler {
 	return &GameHandler{
-		hub:   hub,
-		games: make(map[string]*models.Game),
+		Hub:   hub,
+		db:    db,
+		redis: redis,
+		Games: make(map[string]*models.Game),
 	}
 }
 
@@ -45,7 +52,7 @@ func (h *GameHandler) CreateGame(w http.ResponseWriter, r *http.Request) {
 
 	gameID := uuid.New().String()
 	game := models.NewGame(gameID, req.Text)
-	h.games[gameID] = game
+	h.Games[gameID] = game
 
 	json.NewEncoder(w).Encode(game)
 }
@@ -54,7 +61,7 @@ func (h *GameHandler) GetGame(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	gameID := vars["id"]
 
-	game, exists := h.games[gameID]
+	game, exists := h.Games[gameID]
 	if !exists {
 		http.Error(w, "Game not found", http.StatusNotFound)
 		return
@@ -73,7 +80,7 @@ func (h *GameHandler) JoinGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	game, exists := h.games[gameID]
+	game, exists := h.Games[gameID]
 	if !exists {
 		http.Error(w, "Game not found", http.StatusNotFound)
 		return
@@ -98,7 +105,7 @@ func (h *GameHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &ws.Client{
-		Hub:    h.hub,
+		Hub:    h.Hub,
 		Conn:   conn,
 		Send:   make(chan []byte, 256),
 		GameID: gameID,
@@ -115,10 +122,10 @@ func (h *GameHandler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
 	gameID := vars["id"]
 
 	var progressUpdate struct {
-		PlayerID  string  `json:"playerId"`
-		Progress  float64 `json:"progress"`
-		WPM       int     `json:"wpm"`
-		Accuracy  float64 `json:"accuracy"`
+		PlayerID string  `json:"playerId"`
+		Progress float64 `json:"progress"`
+		WPM      int     `json:"wpm"`
+		Accuracy float64 `json:"accuracy"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&progressUpdate); err != nil {
@@ -126,7 +133,7 @@ func (h *GameHandler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	game, exists := h.games[gameID]
+	game, exists := h.Games[gameID]
 	if !exists {
 		http.Error(w, "Game not found", http.StatusNotFound)
 		return
@@ -134,7 +141,7 @@ func (h *GameHandler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
 
 	game.Mu.Lock()
 	for _, player := range game.Players {
-		if player.ID == progressUpdate.PlayerID {
+		if player.ID.String() == progressUpdate.PlayerID {
 			player.Progress = progressUpdate.Progress
 			player.WPM = progressUpdate.WPM
 			player.Accuracy = progressUpdate.Accuracy
@@ -143,8 +150,8 @@ func (h *GameHandler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
 			event := models.GameEvent{
 				Timestamp: time.Now(),
 				PlayerID:  progressUpdate.PlayerID,
-				Type:     "progress",
-				Data:     progressUpdate,
+				Type:      "progress",
+				Data:      progressUpdate,
 			}
 			game.ReplayData = append(game.ReplayData, event)
 			break
@@ -167,19 +174,19 @@ func (h *GameHandler) EndGame(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	gameID := vars["id"]
 
-	game, exists := h.games[gameID]
+	game, exists := h.Games[gameID]
 	if !exists {
 		http.Error(w, "Game not found", http.StatusNotFound)
 		return
 	}
 
 	game.Mu.Lock()
-	game.Status = models.Finished
+	game.Status = string(models.Finished)
 	endTime := time.Now()
 	game.ReplayData = append(game.ReplayData, models.GameEvent{
 		Timestamp: endTime,
-		Type:     "end",
-		Data:     map[string]interface{}{"endTime": endTime},
+		Type:      "end",
+		Data:      map[string]interface{}{"endTime": endTime},
 	})
 	game.Mu.Unlock()
 
@@ -195,7 +202,7 @@ func (h *GameHandler) EndGame(w http.ResponseWriter, r *http.Request) {
 
 // Helper method to broadcast messages to all clients in a game
 func (h *GameHandler) broadcastToGame(gameID string, message []byte) {
-	if gameClients, exists := h.hub.Games[gameID]; exists {
+	if gameClients, exists := h.Hub.Games[gameID]; exists {
 		for client := range gameClients {
 			select {
 			case client.Send <- message:
