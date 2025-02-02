@@ -67,7 +67,7 @@ func NewGame(id string, text string) *Game {
 	}
 	return &Game{
 		ID:      uuid,
-		Status:  string(Waiting),
+		Status:  Waiting,
 		Text:    text,
 		Players: make([]Player, 0),
 	}
@@ -91,5 +91,5 @@ func (g *Game) Start() {
 
 	now := time.Now()
 	g.CreatedAt = now
-	g.Status = string(Playing)
+	g.Status = Playing
 }

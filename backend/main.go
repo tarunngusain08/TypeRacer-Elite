@@ -9,6 +9,7 @@ import (
 
 	"typerace/db"
 	"typerace/handlers"
+	"typerace/middleware"
 	"typerace/websocket"
 )
 
@@ -49,15 +50,27 @@ func main() {
 
 	// User management routes
 	api.HandleFunc("/users", userHandler.CreateUser).Methods("POST")
-	api.HandleFunc("/login", userHandler.Login).Methods("POST")
 	api.HandleFunc("/users/{id}", userHandler.GetUser).Methods("GET")
+
+	// Auth routes
+	api.HandleFunc("/auth/register", authHandler.Register).Methods("POST")
+	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST")
+	api.HandleFunc("/auth/refresh", authHandler.RefreshToken).Methods("POST")
+
+	// Protected routes
+	protected := api.PathPrefix("/").Subrouter()
+	protected.Use(middleware.AuthMiddleware)
+	protected.HandleFunc("/auth/me", authHandler.GetMe).Methods("GET")
+	protected.HandleFunc("/games", gameHandler.CreateGame).Methods("POST")
+	protected.HandleFunc("/games/{id}/join", gameHandler.JoinGame).Methods("POST")
 
 	// CORS configuration
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
+		AllowedOrigins:      []string{"http://localhost:3000"},
+		AllowedMethods:      []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:      []string{"*"},
+		AllowCredentials:    true,
+		AllowPrivateNetwork: true,
 	})
 
 	// Start server

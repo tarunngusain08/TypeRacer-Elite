@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -12,8 +12,17 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run dev
+# Build the app
+RUN npm run build
+
+# Install serve
+RUN npm install -g serve
+
+# Add this line to allow connections from outside the container
+ENV VITE_HOST=0.0.0.0
+
+EXPOSE 3000
+CMD ["serve", "-s", "dist", "-l", "3000"]
 
 # Final stage
 # FROM nginx:alpine
@@ -23,7 +32,5 @@ RUN npm run dev
 
 # Copy nginx configuration
 # COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80
 
 # CMD ["nginx", "-g", "daemon off;"]

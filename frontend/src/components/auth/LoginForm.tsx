@@ -1,65 +1,81 @@
 import { useState } from 'react';
-import { authApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import LoadingSpinner from '../ui/LoadingSpinner';
+import ErrorMessage from '../ui/ErrorMessage';
 
 interface LoginFormProps {
   onSuccess: () => void;
 }
 
 const LoginForm = ({ onSuccess }: LoginFormProps) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const { login, error, setError } = useAuth();
+  const { showToast } = useToast();
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      const response = await authApi.login({ email, password });
-      if (response.token) {
-        localStorage.setItem('token', response.token);
-        onSuccess();
-      }
+      await login(formData.username, formData.password);
+      showToast('Successfully logged in!', 'success');
+      onSuccess();
     } catch (err) {
-      setError('Invalid email or password');
+      showToast('Failed to login', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/50 text-red-500 rounded-lg p-3 text-sm">
-          {error}
-        </div>
-      )}
-
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <ErrorMessage message={error} />}
+      
       <div>
-        <label className="block text-gray-400 mb-2">Email</label>
+        <label className="block text-sm font-medium mb-2">Username</label>
         <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-gray-800/30 rounded-lg p-3 border border-gray-700/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          type="text"
+          value={formData.username}
+          onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+          className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+          placeholder="Enter your username"
           required
+          disabled={isLoading}
         />
       </div>
-
+      
       <div>
-        <label className="block text-gray-400 mb-2">Password</label>
+        <label className="block text-sm font-medium mb-2">Password</label>
         <input
           type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-gray-800/30 rounded-lg p-3 border border-gray-700/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          value={formData.password}
+          onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+          className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+          placeholder="Enter your password"
           required
+          disabled={isLoading}
         />
       </div>
-
+      
       <button
         type="submit"
-        className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300"
+        disabled={isLoading}
+        className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/30 transition-all duration-300 disabled:opacity-50"
       >
-        Log In
+        {isLoading ? (
+          <div className="flex items-center justify-center">
+            <LoadingSpinner />
+            <span className="ml-2">Signing in...</span>
+          </div>
+        ) : (
+          'Sign In'
+        )}
       </button>
     </form>
   );

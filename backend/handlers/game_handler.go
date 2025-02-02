@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -96,11 +97,16 @@ func (h *GameHandler) JoinGame(w http.ResponseWriter, r *http.Request) {
 
 func (h *GameHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	gameID := vars["gameId"]
+	gameId := vars["gameId"]
+
+	// Set CORS headers for WebSocket
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true // In production, make this more secure
+	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error upgrading to websocket: %v", err)
 		return
 	}
 
@@ -108,10 +114,12 @@ func (h *GameHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		Hub:    h.Hub,
 		Conn:   conn,
 		Send:   make(chan []byte, 256),
-		GameID: gameID,
+		GameID: gameId,
 	}
+
 	client.Hub.Register <- client
 
+	// Start goroutines for reading and writing
 	go client.WritePump()
 	go client.ReadPump()
 }
@@ -181,7 +189,7 @@ func (h *GameHandler) EndGame(w http.ResponseWriter, r *http.Request) {
 	}
 
 	game.Mu.Lock()
-	game.Status = string(models.Finished)
+	game.Status = models.Finished
 	endTime := time.Now()
 	game.ReplayData = append(game.ReplayData, models.GameEvent{
 		Timestamp: endTime,

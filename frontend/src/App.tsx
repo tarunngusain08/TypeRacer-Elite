@@ -8,6 +8,9 @@ import { gameApi } from './services/api';
 import { useWebSocket } from './hooks/useWebSocket';
 import { v4 as uuid } from 'uuid';
 import { authService, authApi } from './services/auth.service';
+import { WebSocketProvider } from './contexts/WebSocketContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 
 function App() {
   const [gameState, setGameState] = useState('waiting'); // waiting, playing, finished
@@ -52,6 +55,16 @@ function App() {
     // Check token validity on mount
     setIsAuthenticated(authService.isAuthenticated());
   }, []);
+
+  const handleStartGameClick = () => {
+    if (!isAuthenticated) {
+      // Show auth modal if user is not authenticated
+      setShowAuthModal(true);
+    } else {
+      // Start the game if user is authenticated
+      handlePlayClick();
+    }
+  };
 
   const handlePlayClick = async () => {
     try {
@@ -110,121 +123,135 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center space-x-2">
-            <Trophy className="w-8 h-8 text-yellow-400" />
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-              TypeRacer Elite
-            </h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
-              <>
-                <button
-                  onClick={handlePlayClick}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all duration-300 ${
-                    !isSpectator 
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg shadow-purple-500/30'
-                      : 'bg-gray-800 hover:bg-gray-700'
-                  }`}
-                >
-                  <Users className="w-5 h-5" />
-                  <span>Play</span>
-                </button>
-                <button
-                  onClick={handleSpectateClick}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all duration-300 ${
-                    isSpectator 
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg shadow-purple-500/30'
-                      : 'bg-gray-800 hover:bg-gray-700'
-                  }`}
-                >
-                  <Eye className="w-5 h-5" />
-                  <span>Spectate</span>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300"
-              >
-                Sign In to Play
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Auth Modal */}
-        {showAuthModal && (
-          <AuthModal
-            onClose={() => setShowAuthModal(false)}
-            onSuccess={handleAuthSuccess}
-          />
-        )}
-
-        {/* Main Content */}
-        {isSpectator ? (
-          <SpectatorView />
-        ) : (
-          <div className="space-y-6">
-            {gameState === 'waiting' && !hasGameStarted && (
-              <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-8 border border-gray-800 shadow-2xl text-center">
-                <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-                  Ready to Race?
-                </h2>
-                <p className="text-gray-400 mb-6">Show off your typing skills and compete with others!</p>
-                <button
-                  onClick={handlePlayClick}
-                  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300"
-                >
-                  Start Game
-                </button>
-              </div>
-            )}
-            {gameState === 'playing' && (
-              <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-8 border border-gray-800 shadow-2xl">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-                    Race #{Math.floor(Math.random() * 1000)}
-                  </h2>
-                  <div className="flex items-center space-x-3 bg-gray-800/50 px-4 py-2 rounded-lg">
-                    <Timer className="w-6 h-6 text-purple-400" />
-                    <span className="text-2xl font-mono">{timeLeft}s</span>
-                  </div>
+    <AuthProvider>
+      <ToastProvider>
+        <WebSocketProvider>
+          <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white p-8">
+            <div className="max-w-7xl mx-auto">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center space-x-2">
+                  <Trophy className="w-8 h-8 text-yellow-400" />
+                  <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                    TypeRacer Elite
+                  </h1>
                 </div>
-                <GameInterface 
-                  gameId={gameId || ''} 
-                  playerId={playerId}
-                  onComplete={handleGameComplete} 
+                <div className="flex items-center space-x-4">
+                  {isAuthenticated ? (
+                    <>
+                      <button
+                        onClick={handlePlayClick}
+                        className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all duration-300 ${
+                          !isSpectator 
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg shadow-purple-500/30'
+                            : 'bg-gray-800 hover:bg-gray-700'
+                        }`}
+                      >
+                        <Users className="w-5 h-5" />
+                        <span>Play</span>
+                      </button>
+                      <button
+                        onClick={handleSpectateClick}
+                        className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all duration-300 ${
+                          isSpectator 
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg shadow-purple-500/30'
+                            : 'bg-gray-800 hover:bg-gray-700'
+                        }`}
+                      >
+                        <Eye className="w-5 h-5" />
+                        <span>Spectate</span>
+                      </button>
+                      <button
+                        onClick={handleLogout}
+                        className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg"
+                      >
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setShowAuthModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300"
+                    >
+                      Sign In to Play
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Auth Modal */}
+              {showAuthModal && (
+                <AuthModal
+                  onClose={() => setShowAuthModal(false)}
+                  onSuccess={() => {
+                    handleAuthSuccess();
+                    // Start the game after successful authentication
+                    handlePlayClick();
+                  }}
                 />
-              </div>
-            )}
-            {gameState === 'finished' && gameId && (
-              <>
-                <MatchResults gameId={gameId} />
-                <div className="flex justify-center mt-6">
-                  <button
-                    onClick={handleNewGame}
-                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300"
-                  >
-                    Play Again
-                  </button>
+              )}
+
+              {/* Main Content */}
+              {isSpectator ? (
+                <SpectatorView />
+              ) : (
+                <div className="space-y-6">
+                  {gameState === 'waiting' && !hasGameStarted && (
+                    <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-8 border border-gray-800 shadow-2xl text-center">
+                      <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                        Ready to Race?
+                      </h2>
+                      <p className="text-gray-400 mb-6">
+                        {isAuthenticated 
+                          ? "Show off your typing skills and compete with others!"
+                          : "Sign in to start racing and track your progress!"}
+                      </p>
+                      <button
+                        onClick={handleStartGameClick}
+                        className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300"
+                      >
+                        {isAuthenticated ? "Start Game" : "Sign In to Play"}
+                      </button>
+                    </div>
+                  )}
+                  {gameState === 'playing' && (
+                    <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-8 border border-gray-800 shadow-2xl">
+                      <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                          Race #{Math.floor(Math.random() * 1000)}
+                        </h2>
+                        <div className="flex items-center space-x-3 bg-gray-800/50 px-4 py-2 rounded-lg">
+                          <Timer className="w-6 h-6 text-purple-400" />
+                          <span className="text-2xl font-mono">{timeLeft}s</span>
+                        </div>
+                      </div>
+                      <GameInterface 
+                        gameId={gameId || ''} 
+                        playerId={playerId}
+                        onComplete={handleGameComplete} 
+                      />
+                    </div>
+                  )}
+                  {gameState === 'finished' && gameId && (
+                    <>
+                      <MatchResults gameId={gameId} />
+                      <div className="flex justify-center mt-6">
+                        <button
+                          onClick={handleNewGame}
+                          className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300"
+                        >
+                          Play Again
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
-        )}
-      </div>
-    </div>
+        </WebSocketProvider>
+      </ToastProvider>
+    </AuthProvider>
   );
 }
 
