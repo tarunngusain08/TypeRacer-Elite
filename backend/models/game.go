@@ -19,7 +19,7 @@ type Game struct {
 	Text      string      `json:"text"`
 	StartTime *time.Time  `json:"startTime,omitempty"`
 	Players   []*Player   `json:"players"`
-	mu        sync.Mutex
+	Mu        sync.Mutex
 	Category    string      `json:"category"`
 	Difficulty  string      `json:"difficulty"`
 	IsPrivate   bool        `json:"isPrivate"`
@@ -55,8 +55,8 @@ func NewGame(id string, text string) *Game {
 }
 
 func (g *Game) AddPlayer(player *Player) bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.Mu.Lock()
+	defer g.Mu.Unlock()
 
 	if len(g.Players) >= 4 {
 		return false
@@ -67,8 +67,8 @@ func (g *Game) AddPlayer(player *Player) bool {
 }
 
 func (g *Game) Start() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.Mu.Lock()
+	defer g.Mu.Unlock()
 
 	now := time.Now()
 	g.StartTime = &now

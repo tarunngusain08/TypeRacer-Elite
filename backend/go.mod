@@ -8,3 +8,5 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/rs/cors v1.11.1
 )
+
+require golang.org/x/crypto v0.32.0 // indirect
