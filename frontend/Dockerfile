@@ -13,17 +13,17 @@ RUN npm install
 COPY . .
 
 # Build the application
-RUN npm run dev
+RUN npm run build
 
 # Final stage
-# FROM nginx:alpine
+FROM nginx:alpine
 
 # Copy built assets from builder
-# COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
-# CMD ["nginx", "-g", "daemon off;"]
+CMD ["nginx", "-g", "daemon off;"]

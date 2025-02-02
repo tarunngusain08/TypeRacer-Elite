@@ -10,12 +10,13 @@ function App() {
   const [isSpectator, setIsSpectator] = useState(false);
   const [hasGameStarted, setHasGameStarted] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
+  const [gameId, setGameId] = useState('');
 
   // Timer effect
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0 && !hasCompleted) {
       const timer = setInterval(() => {
-        setTimeLeft((prev) => {
+        setTimeLeft(prev => {
           if (prev <= 1) {
             setGameState('finished');
             return 0;
@@ -23,14 +24,28 @@ function App() {
           return prev - 1;
         });
       }, 1000);
-
       return () => clearInterval(timer);
     }
   }, [gameState, timeLeft, hasCompleted]);
 
-  const handlePlayClick = () => {
+  const handlePlayClick = async () => {
     setIsSpectator(false);
     if (!hasGameStarted) {
+      // Create a new game in the backend via the REST API
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/games`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: "The quick brown fox jumps over the lazy dog. As the sun sets behind the mountains, casting long shadows across the valley, a gentle breeze rustles through the leaves." })
+        });
+        if (!res.ok) {
+          throw new Error('Failed to create game');
+        }
+        const game = await res.json();
+        setGameId(game.id);
+      } catch (error) {
+        console.error(error);
+      }
       setGameState('playing');
       setTimeLeft(60);
       setHasGameStarted(true);
@@ -52,7 +67,6 @@ function App() {
   const handleGameComplete = (wpm: number, accuracy: number) => {
     setHasCompleted(true);
     setIsSpectator(true);
-    // In a real app, we would send these stats to the server
     console.log(`Game completed! WPM: ${wpm}, Accuracy: ${accuracy}`);
   };
 
@@ -92,7 +106,6 @@ function App() {
             </button>
           </div>
         </div>
-
         {/* Main Content */}
         {isSpectator ? (
           <SpectatorView />
@@ -123,7 +136,8 @@ function App() {
                     <span className="text-2xl font-mono">{timeLeft}s</span>
                   </div>
                 </div>
-                <GameInterface onComplete={handleGameComplete} />
+                {/* Pass the created gameId to the GameInterface */}
+                <GameInterface gameId={gameId} onComplete={handleGameComplete} />
               </div>
             )}
             {gameState === 'finished' && (

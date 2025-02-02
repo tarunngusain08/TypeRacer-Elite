@@ -1,16 +1,16 @@
 version: '3.8'
 
 services:
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:80"
-  #   depends_on:
-  #     - backend
-  #   environment:
-  #     - VITE_API_URL=http://backend:8080  # Fixed: Use service name instead of localhost
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8080
 
   backend:
     build:
@@ -31,31 +31,21 @@ services:
 
   postgres:
     image: postgres:15-alpine
-    # ports:
-    #   - "5432:5432"  # Optional: Uncomment if you need external DB access
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRES_USER=typerace
       - POSTGRES_PASSWORD=typerace123
       - POSTGRES_DB=typerace
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U typerace"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   redis:
     image: redis:7-alpine
-    # ports:
-    #   - "6379:6379"  # Optional: Uncomment if you need external Redis access
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 volumes:
   postgres_data:
