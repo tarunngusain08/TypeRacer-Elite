@@ -68,7 +68,7 @@ func main() {
 	c := cors.New(cors.Options{
 		AllowedOrigins:      []string{"http://localhost:3000"},
 		AllowedMethods:      []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:      []string{"*"},
+		AllowedHeaders:      []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials:    true,
 		AllowPrivateNetwork: true,
 	})
@@ -77,4 +77,13 @@ func main() {
 	port := ":8080"
 	log.Printf("Server starting on port %s", port)
 	log.Fatal(http.ListenAndServe(port, c.Handler(router)))
+}
+
+func setupCORS(handler http.Handler) http.Handler {
+	return cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowCredentials: true,
+	}).Handler(handler)
 }

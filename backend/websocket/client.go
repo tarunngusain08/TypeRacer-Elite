@@ -1,7 +1,6 @@
 package websocket
 
 import (
-	"bytes"
 	"log"
 	"time"
 
@@ -48,8 +47,10 @@ func (c *Client) ReadPump() {
 			}
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.Hub.Broadcast <- message
+		c.Hub.Broadcast <- &Message{
+			GameID:  c.GameID,
+			Content: message,
+		}
 	}
 }
 

@@ -6,33 +6,23 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
 
 	"typerace/models"
-	ws "typerace/websocket"
-
-	"github.com/go-redis/redis/v8"
+	"typerace/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // For development
-	},
-}
-
 type GameHandler struct {
-	Hub   *ws.Hub                 `json:"hub,omitempty"`
+	Hub   *websocket.Hub          `json:"hub,omitempty"`
 	db    *gorm.DB                `json:"db,omitempty"`
 	redis *redis.Client           `json:"redis,omitempty"`
 	Games map[string]*models.Game `json:"games,omitempty"`
 }
 
-func NewGameHandler(hub *ws.Hub, db *gorm.DB, redis *redis.Client) *GameHandler {
+func NewGameHandler(hub *websocket.Hub, db *gorm.DB, redis *redis.Client) *GameHandler {
 	return &GameHandler{
 		Hub:   hub,
 		db:    db,
@@ -97,27 +87,39 @@ func (h *GameHandler) JoinGame(w http.ResponseWriter, r *http.Request) {
 
 func (h *GameHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	gameId := vars["gameId"]
+	gameID := vars["gameId"]
 
-	// Set CORS headers for WebSocket
-	upgrader.CheckOrigin = func(r *http.Request) bool {
-		return true // In production, make this more secure
+	// Enable CORS for WebSocket
+	websocket.Upgrader.CheckOrigin = func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		return origin == "http://localhost:3000"
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := websocket.UpgradeConnection(w, r)
 	if err != nil {
-		log.Printf("Error upgrading to websocket: %v", err)
+		log.Printf("Failed to upgrade connection: %v", err)
 		return
 	}
 
-	client := &ws.Client{
+	// Create new client with game ID
+	client := &websocket.Client{
 		Hub:    h.Hub,
 		Conn:   conn,
 		Send:   make(chan []byte, 256),
-		GameID: gameId,
+		GameID: gameID,
 	}
 
-	client.Hub.Register <- client
+	// Register client with the hub
+	h.Hub.Register <- client
+
+	// Send initial game state if game exists
+	if game, exists := h.Games[gameID]; exists {
+		initialState, _ := json.Marshal(map[string]interface{}{
+			"type":    "gameState",
+			"payload": game,
+		})
+		client.Send <- initialState
+	}
 
 	// Start goroutines for reading and writing
 	go client.WritePump()

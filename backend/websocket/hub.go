@@ -5,11 +5,11 @@ import (
 )
 
 type Hub struct {
-	// Registered clients
-	Clients map[*Client]bool
-
-	// Games maps game IDs to sets of clients
+	// Registered clients by game ID
 	Games map[string]map[*Client]bool
+
+	// Inbound messages from the clients
+	Broadcast chan *Message
 
 	// Register requests from the clients
 	Register chan *Client
@@ -17,17 +17,15 @@ type Hub struct {
 	// Unregister requests from clients
 	Unregister chan *Client
 
-	Broadcast chan []byte
-	mu        sync.Mutex
+	mu sync.RWMutex
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		Clients:    make(map[*Client]bool),
-		Games:      make(map[string]map[*Client]bool),
+		Broadcast:  make(chan *Message),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
-		Broadcast:  make(chan []byte),
+		Games:      make(map[string]map[*Client]bool),
 	}
 }
 
@@ -36,7 +34,6 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.Register:
 			h.mu.Lock()
-			h.Clients[client] = true
 			if _, ok := h.Games[client.GameID]; !ok {
 				h.Games[client.GameID] = make(map[*Client]bool)
 			}
@@ -45,25 +42,30 @@ func (h *Hub) Run() {
 
 		case client := <-h.Unregister:
 			h.mu.Lock()
-			if _, ok := h.Clients[client]; ok {
-				delete(h.Clients, client)
-				delete(h.Games[client.GameID], client)
-				close(client.Send)
+			if _, ok := h.Games[client.GameID]; ok {
+				if _, ok := h.Games[client.GameID][client]; ok {
+					delete(h.Games[client.GameID], client)
+					close(client.Send)
+					if len(h.Games[client.GameID]) == 0 {
+						delete(h.Games, client.GameID)
+					}
+				}
 			}
 			h.mu.Unlock()
 
 		case message := <-h.Broadcast:
-			h.mu.Lock()
-			for client := range h.Clients {
-				select {
-				case client.Send <- message:
-				default:
-					close(client.Send)
-					delete(h.Clients, client)
-					delete(h.Games[client.GameID], client)
+			h.mu.RLock()
+			if clients, ok := h.Games[message.GameID]; ok {
+				for client := range clients {
+					select {
+					case client.Send <- message.Content:
+					default:
+						close(client.Send)
+						delete(clients, client)
+					}
 				}
 			}
-			h.mu.Unlock()
+			h.mu.RUnlock()
 		}
 	}
 }

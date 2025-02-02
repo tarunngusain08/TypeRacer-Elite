@@ -11,7 +11,8 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://backend:8080
+      - VITE_WS_URL=ws://localhost:8080/api/ws
+      - VITE_API_URL=http://localhost:8080
     depends_on:
       - backend
 
@@ -27,8 +28,9 @@ services:
       - postgres
       - redis
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/typerace
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/typerace?sslmode=disable
       - REDIS_URL=redis://redis:6379
+      - CORS_ORIGIN=http://localhost:3000
 
   postgres:
     image: postgres:14
