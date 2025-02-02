@@ -80,6 +80,16 @@ export default {
         'text-flicker': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.8' },
+        },
+        'gradient-xy': {
+          '0%, 100%': {
+            'background-size': '400% 400%',
+            'background-position': 'left center'
+          },
+          '50%': {
+            'background-size': '200% 200%',
+            'background-position': 'right center'
+          }
         }
       },
       animation: {
@@ -98,6 +108,7 @@ export default {
         'spin-slow': 'spin-slow 3s linear infinite',
         'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
         'text-flicker': 'text-flicker 0.5s ease-in-out infinite',
+        'gradient-xy': 'gradient-xy 15s ease infinite',
       },
     },
   },

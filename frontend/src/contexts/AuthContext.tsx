@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../services/auth.service';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -14,7 +14,7 @@ interface AuthContextType {
   setError: (error: string | null) => void;
 }
 
-const AuthContext = createContext<AuthContextType>({
+export const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
   isLoading: true,
@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const setError = (error: string | null) => {
     setState(prev => ({ ...prev, error }));
@@ -118,13 +119,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleLogout = () => {
     authApi.logout();
-    // End any active game connections
     if (window.gameSocket) {
       window.gameSocket.close();
     }
-    // Clear game state
     setGameState(null);
-    // Redirect to landing page
+    setState(prev => ({
+      ...prev,
+      isAuthenticated: false,
+      user: null,
+    }));
     navigate('/');
   };
 
