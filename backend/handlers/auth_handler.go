@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -71,25 +72,43 @@ func generateTokenPair(user *models.User, secret string) (*TokenPair, error) {
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("Failed to decode request body: %v", err)
-		http.Error(w, "Invalid request format. Please check your input.", http.StatusBadRequest)
+	// Set CORS headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	// Handle preflight
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	// Validate username
-	if len(req.Username) < 3 {
+	var req RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Failed to decode request body: %v", err)
+		http.Error(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	// Validate input
+	if len(strings.TrimSpace(req.Username)) < 3 {
 		log.Printf("Username too short: %s", req.Username)
 		http.Error(w, "Username must be at least 3 characters long", http.StatusBadRequest)
 		return
 	}
 
-	// Check if username exists
+	if len(req.Password) < 6 {
+		log.Printf("Password too short for user: %s", req.Username)
+		http.Error(w, "Password must be at least 6 characters long", http.StatusBadRequest)
+		return
+	}
+
+	// Check if username exists (case insensitive)
 	var existingUser models.User
 	if err := h.db.Where("LOWER(username) = LOWER(?)", req.Username).First(&existingUser).Error; err == nil {
 		log.Printf("Username already exists: %s", req.Username)
-		http.Error(w, "This username is already taken. Please choose another one.", http.StatusConflict)
+		http.Error(w, "Username already taken", http.StatusConflict)
 		return
 	}
 
@@ -97,40 +116,54 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("Failed to hash password: %v", err)
-		http.Error(w, "Server error while processing password. Please try again.", http.StatusInternalServerError)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
+	// Create user
 	user := &models.User{
 		ID:           uuid.New().String(),
 		Username:     req.Username,
 		PasswordHash: string(hashedPassword),
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
-		TotalRaces:   0,
-		AverageWPM:   0,
-		BestWPM:      0,
 	}
 
-	if err := h.db.Create(&user).Error; err != nil {
+	if err := h.db.Create(user).Error; err != nil {
 		log.Printf("Failed to create user: %v", err)
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
-			http.Error(w, "This username is already taken. Please choose another one.", http.StatusConflict)
+			http.Error(w, "Username already taken", http.StatusConflict)
 			return
 		}
-		http.Error(w, "Failed to create user account. Please try again.", http.StatusInternalServerError)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Successfully created user: %s", user.Username)
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "User registered successfully! You can now sign in.",
+	// Generate tokens
+	tokens, err := generateTokenPair(user, "your-secret-key") // Use env variable in production
+	if err != nil {
+		log.Printf("Failed to generate tokens: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response
+	response := map[string]interface{}{
+		"message": "Registration successful",
 		"user": map[string]interface{}{
 			"id":       user.ID,
 			"username": user.Username,
 		},
-	})
+		"tokens": tokens,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Successfully registered user: %s", user.Username)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -224,4 +257,15 @@ func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	user.PasswordHash = ""
 
 	json.NewEncoder(w).Encode(user)
+}
+
+func (h *AuthHandler) CheckUsername(w http.ResponseWriter, r *http.Request) {
+	username := mux.Vars(r)["username"]
+
+	var existingUser models.User
+	exists := h.db.Where("LOWER(username) = LOWER(?)", username).First(&existingUser).Error == nil
+
+	json.NewEncoder(w).Encode(map[string]bool{
+		"exists": exists,
+	})
 }

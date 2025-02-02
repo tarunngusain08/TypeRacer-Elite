@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { authApi } from '../../services/auth.service';
 
 interface RegisterFormProps {
   onSuccess: () => void;
@@ -16,6 +17,31 @@ const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
+
+  useEffect(() => {
+    const checkUsername = async () => {
+      if (formData.username.length < 3) return;
+      
+      setIsCheckingUsername(true);
+      try {
+        const response = await authApi.checkUsername(formData.username);
+        if (response.exists) {
+          setUsernameError('This username is already taken');
+        } else {
+          setUsernameError('');
+        }
+      } catch (error) {
+        console.error('Username check failed:', error);
+      } finally {
+        setIsCheckingUsername(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkUsername, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.username]);
 
   const validateForm = () => {
     if (formData.username.trim() === '') {
@@ -100,7 +126,7 @@ const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
             setError('');
             setFormData(prev => ({ ...prev, username: e.target.value }));
           }}
-          className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+          className={`w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500 ${usernameError ? 'border-red-500' : ''}`}
           placeholder="3-20 characters"
           required
           minLength={3}
@@ -108,6 +134,12 @@ const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
           disabled={isLoading}
         />
         <p className="text-xs text-gray-400">Must be 3-20 characters long</p>
+        {isCheckingUsername && (
+          <span className="text-gray-400 text-sm">Checking username...</span>
+        )}
+        {usernameError && (
+          <span className="text-red-500 text-sm">{usernameError}</span>
+        )}
       </div>
       
       <div className="space-y-2">

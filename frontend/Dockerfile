@@ -6,8 +6,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies including react-router-dom
 RUN npm install
+RUN npm install react-router-dom @types/react-router-dom
 
 # Copy source code
 COPY . .

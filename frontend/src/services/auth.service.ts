@@ -1,5 +1,4 @@
-import api from './api';
-import axios from 'axios';
+import axios from './axios';
 
 interface TokenPair {
   accessToken: string;
@@ -17,7 +16,7 @@ interface AuthResponse {
 export const authApi = {
   async login(username: string, password: string): Promise<AuthResponse> {
     try {
-      const response = await api.post<AuthResponse>('/auth/login', {
+      const response = await axios.post<AuthResponse>('/api/auth/login', {
         username,
         password
       });
@@ -28,8 +27,14 @@ export const authApi = {
         return response.data;
       }
       throw new Error('No tokens received');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      if (error.response) {
+        const message = typeof error.response.data === 'string' 
+          ? error.response.data 
+          : 'Login failed';
+        throw new Error(message);
+      }
       throw error;
     }
   },
@@ -37,7 +42,7 @@ export const authApi = {
   async refreshToken(): Promise<TokenPair> {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
-      const response = await api.post<{ tokens: TokenPair }>('/auth/refresh', {
+      const response = await axios.post<{ tokens: TokenPair }>('/api/auth/refresh', {
         refreshToken
       });
       
@@ -54,15 +59,24 @@ export const authApi = {
   async register(username: string, password: string) {
     try {
       const response = await axios.post('/api/auth/register', {
-        username,
+        username: username.trim(),
         password,
       });
+      
+      if (response.data.tokens) {
+        localStorage.setItem('accessToken', response.data.tokens.accessToken);
+        localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
+      }
+      
       return response.data;
     } catch (error: any) {
+      console.error('Registration error:', error);
+      
       if (error.response) {
-        // Get the error message from the response
-        const errorMessage = error.response.data || error.response.statusText;
-        throw new Error(errorMessage);
+        const message = typeof error.response.data === 'string' 
+          ? error.response.data 
+          : 'Registration failed';
+        throw new Error(message);
       } else if (error.request) {
         console.error('No response received:', error.request);
         throw new Error('Server is not responding. Please try again later.');
@@ -92,11 +106,21 @@ export const authApi = {
 
   async getMe() {
     try {
-      const response = await api.get('/auth/me');
+      const response = await axios.get('/api/auth/me');
       return response.data;
     } catch (error) {
       console.error('Failed to fetch user data:', error);
       throw error;
+    }
+  },
+
+  async checkUsername(username: string): Promise<{ exists: boolean }> {
+    try {
+      const response = await axios.get(`/api/auth/check-username/${username}`);
+      return response.data;
+    } catch (error) {
+      console.error('Username check failed:', error);
+      return { exists: false };
     }
   }
 }; 

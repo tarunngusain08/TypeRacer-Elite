@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      external: ['axios'],
+      external: ['react-router-dom'],
     },
   },
   resolve: {
@@ -22,9 +22,16 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://backend:8080',
         changeOrigin: true,
+        secure: false,
+        // Don't rewrite the path since our backend expects /api prefix
+        // rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/ws': {
+        target: 'ws://backend:8080',
+        ws: true,
+      }
     },
   },
 });
