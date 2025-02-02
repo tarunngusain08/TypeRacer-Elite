@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"typerace/models"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -70,29 +73,64 @@ func generateTokenPair(user *models.User, secret string) (*TokenPair, error) {
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.Printf("Failed to decode request body: %v", err)
+		http.Error(w, "Invalid request format. Please check your input.", http.StatusBadRequest)
+		return
+	}
+
+	// Validate username
+	if len(req.Username) < 3 {
+		log.Printf("Username too short: %s", req.Username)
+		http.Error(w, "Username must be at least 3 characters long", http.StatusBadRequest)
+		return
+	}
+
+	// Check if username exists
+	var existingUser models.User
+	if err := h.db.Where("LOWER(username) = LOWER(?)", req.Username).First(&existingUser).Error; err == nil {
+		log.Printf("Username already exists: %s", req.Username)
+		http.Error(w, "This username is already taken. Please choose another one.", http.StatusConflict)
 		return
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		log.Printf("Failed to hash password: %v", err)
+		http.Error(w, "Server error while processing password. Please try again.", http.StatusInternalServerError)
 		return
 	}
 
 	user := &models.User{
+		ID:           uuid.New().String(),
 		Username:     req.Username,
 		PasswordHash: string(hashedPassword),
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		TotalRaces:   0,
+		AverageWPM:   0,
+		BestWPM:      0,
 	}
 
-	if result := h.db.Create(&user); result.Error != nil {
-		http.Error(w, "Username already exists", http.StatusConflict)
+	if err := h.db.Create(&user).Error; err != nil {
+		log.Printf("Failed to create user: %v", err)
+		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+			http.Error(w, "This username is already taken. Please choose another one.", http.StatusConflict)
+			return
+		}
+		http.Error(w, "Failed to create user account. Please try again.", http.StatusInternalServerError)
 		return
 	}
 
+	log.Printf("Successfully created user: %s", user.Username)
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "User registered successfully! You can now sign in.",
+		"user": map[string]interface{}{
+			"id":       user.ID,
+			"username": user.Username,
+		},
+	})
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -8,22 +9,33 @@ import (
 )
 
 type User struct {
-	ID           uuid.UUID `gorm:"type:uuid;primary_key;"`
-	Username     string    `gorm:"unique;not null"`
-	Email        string    `gorm:"unique;not null"`
-	PasswordHash string    `gorm:"not null"`
-	Avatar       string    `json:"avatar"`
-	TotalRaces   int       `json:"totalRaces"`
-	AverageWPM   float64   `json:"averageWpm"`
-	BestWPM      float64   `json:"bestWpm"`
+	ID           string  `gorm:"primarykey;type:uuid;default:gen_random_uuid()"`
+	Username     string  `gorm:"unique;not null"`
+	Email        string  `gorm:"unique;default:null"`
+	PasswordHash string  `gorm:"not null"`
+	Avatar       string  `json:"avatar"`
+	TotalRaces   int     `json:"totalRaces" gorm:"default:0"`
+	AverageWPM   float64 `json:"averageWpm" gorm:"default:0"`
+	BestWPM      float64 `json:"bestWpm" gorm:"default:0"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == uuid.Nil {
-		u.ID = uuid.New()
+	// Username validation
+	if len(u.Username) < 3 {
+		return fmt.Errorf("username must be at least 3 characters")
 	}
+
+	// Check if username already exists (case insensitive)
+	var count int64
+	if err := tx.Model(&User{}).Where("LOWER(username) = LOWER(?)", u.Username).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("username already exists")
+	}
+
 	return nil
 }
 

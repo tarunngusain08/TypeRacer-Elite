@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
@@ -23,17 +22,31 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 	}
 }
 
-func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+type CreateUserRequest struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
+type UserResponse struct {
+	ID         string  `json:"id"`
+	Username   string  `json:"username"`
+	Email      string  `json:"email"`
+	Avatar     string  `json:"avatar"`
+	TotalRaces int     `json:"totalRaces"`
+	AverageWPM float64 `json:"averageWpm"`
+	BestWPM    float64 `json:"bestWpm"`
+}
+
+func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var req CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+
+	// Generate UUID and convert to string
+	userID := uuid.New().String()
 
 	// Check if email already exists
 	var user models.User
@@ -51,7 +64,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now()
 	user = models.User{
-		ID:           uuid.New(),
+		ID:           userID,
 		Username:     req.Username,
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
@@ -64,8 +77,18 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Don't send password hash in response
-	json.NewEncoder(w).Encode(user)
+	response := UserResponse{
+		ID:         user.ID,
+		Username:   user.Username,
+		Email:      user.Email,
+		Avatar:     user.Avatar,
+		TotalRaces: user.TotalRaces,
+		AverageWPM: user.AverageWPM,
+		BestWPM:    user.BestWPM,
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -98,14 +121,27 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["id"]
+	userID := r.URL.Query().Get("id")
+	if userID == "" {
+		http.Error(w, "User ID is required", http.StatusBadRequest)
+		return
+	}
 
 	var user models.User
-	if err := h.db.First(&user, "id = ?", userID).Error; err != nil {
+	if result := h.db.First(&user, "id = ?", userID); result.Error != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	json.NewEncoder(w).Encode(user)
+	response := UserResponse{
+		ID:         user.ID,
+		Username:   user.Username,
+		Email:      user.Email,
+		Avatar:     user.Avatar,
+		TotalRaces: user.TotalRaces,
+		AverageWPM: user.AverageWPM,
+		BestWPM:    user.BestWPM,
+	}
+
+	json.NewEncoder(w).Encode(response)
 }

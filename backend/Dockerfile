@@ -6,15 +6,17 @@ WORKDIR /app
 # Copy go mod and sum files
 COPY go.mod go.sum ./
 
-# Download dependencies
-RUN go mod download
+# Download and verify dependencies
+RUN go mod download && go mod verify
 
-# Copy source code
+# Copy the source code
 COPY . .
 
 # Build the application
-RUN go build -o main .
+RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 
+# Expose port 8080
 EXPOSE 8080
 
+# Run the binary
 CMD ["./main"]

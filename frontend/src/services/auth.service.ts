@@ -1,4 +1,5 @@
 import api from './api';
+import axios from 'axios';
 
 interface TokenPair {
   accessToken: string;
@@ -52,14 +53,23 @@ export const authApi = {
 
   async register(username: string, password: string) {
     try {
-      const response = await api.post('/auth/register', {
+      const response = await axios.post('/api/auth/register', {
         username,
-        password
+        password,
       });
       return response.data;
-    } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
+    } catch (error: any) {
+      if (error.response) {
+        // Get the error message from the response
+        const errorMessage = error.response.data || error.response.statusText;
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        throw new Error('Server is not responding. Please try again later.');
+      } else {
+        console.error('Request setup error:', error.message);
+        throw new Error('Failed to make request. Please check your connection.');
+      }
     }
   },
 
