@@ -7,10 +7,12 @@ import AuthModal from './components/auth/AuthModal';
 import { gameApi } from './services/api';
 import { useWebSocket } from './hooks/useWebSocket';
 import { v4 as uuid } from 'uuid';
-import { authService, authApi } from './services/auth.service';
+import { authApi } from './services/auth.service';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import GameStateTransition from './components/game/GameStateTransition';
+import GameTitle from './components/ui/GameTitle';
 
 function App() {
   const [gameState, setGameState] = useState('waiting'); // waiting, playing, finished
@@ -21,7 +23,9 @@ function App() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [playerId] = useState(() => uuid()); // Generate unique player ID
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+  const [isAuthenticated, setIsAuthenticated] = useState(authApi.isAuthenticated());
+  const [showTransition, setShowTransition] = useState(false);
+  const [transitionStates, setTransitionStates] = useState({ from: '', to: '' });
   
   // Use WebSocket when we have a gameId
   const { isConnected, gameState: wsGameState } = useWebSocket(gameId || '');
@@ -53,8 +57,18 @@ function App() {
 
   useEffect(() => {
     // Check token validity on mount
-    setIsAuthenticated(authService.isAuthenticated());
+    setIsAuthenticated(authApi.isAuthenticated());
   }, []);
+
+  const changeGameState = (newState: string) => {
+    setShowTransition(true);
+    setTransitionStates({ from: gameState, to: newState });
+  };
+
+  const handleTransitionComplete = () => {
+    setShowTransition(false);
+    setGameState(transitionStates.to);
+  };
 
   const handleStartGameClick = () => {
     if (!isAuthenticated) {
@@ -66,22 +80,13 @@ function App() {
     }
   };
 
-  const handlePlayClick = async () => {
-    try {
-      // Create a new game
-      const game = await gameApi.create("Sample text for typing...");
-      setGameId(game.id);
-      
-      // Join the game
-      await gameApi.join(game.id, {
-        id: playerId,
-        name: "Player" + Math.floor(Math.random() * 1000)
-      });
-
-      setGameState('playing');
-      setIsSpectator(false);
-    } catch (error) {
-      console.error('Failed to start game:', error);
+  const handlePlayClick = () => {
+    setIsSpectator(false);
+    if (!hasGameStarted) {
+      changeGameState('playing');
+      setTimeLeft(60);
+      setHasGameStarted(true);
+      setHasCompleted(false);
     }
   };
 
@@ -131,10 +136,8 @@ function App() {
               {/* Header */}
               <div className="flex justify-between items-center mb-8">
                 <div className="flex items-center space-x-2">
-                  <Trophy className="w-8 h-8 text-yellow-400" />
-                  <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-                    TypeRacer Elite
-                  </h1>
+                  <Trophy className="w-8 h-8 text-yellow-400 animate-float" />
+                  <GameTitle />
                 </div>
                 <div className="flex items-center space-x-4">
                   {isAuthenticated ? (
@@ -248,6 +251,14 @@ function App() {
                 </div>
               )}
             </div>
+
+            {showTransition && (
+              <GameStateTransition
+                from={transitionStates.from}
+                to={transitionStates.to}
+                onComplete={handleTransitionComplete}
+              />
+            )}
           </div>
         </WebSocketProvider>
       </ToastProvider>

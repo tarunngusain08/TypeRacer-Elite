@@ -31,18 +31,22 @@ export const MatchResults = ({ gameId }: MatchResultsProps) => {
   const sortedPlayers = [...gameResults.players].sort((a, b) => b.wpm - a.wpm);
 
   return (
-    <div className="results-panel bg-gray-900/50 backdrop-blur-xl rounded-2xl p-8 border border-gray-800 shadow-2xl">
-      <h2 className="title-text text-3xl font-bold text-center mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+    <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-8 border border-gray-800 shadow-2xl animate-scale-in">
+      <h2 className="text-3xl font-bold text-center mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600 animate-bounce-in">
         Race Results
       </h2>
 
-      <div className="results-list space-y-4">
+      <div className="space-y-4">
         {sortedPlayers.map((player, index) => (
           <div 
             key={player.id} 
-            className={`result-card bg-gray-800/30 rounded-xl p-6 border border-gray-700/50 transform transition-all duration-300 ${
-              index === 0 ? 'top-rank scale-105 border-yellow-500/50' : ''
-            }`}
+            className={`
+              bg-gray-800/30 rounded-xl p-6 border border-gray-700/50 
+              transform transition-all duration-300 hover:scale-102
+              ${index === 0 ? 'scale-105 border-yellow-500/50 animate-pulse-glow' : ''}
+              animate-slide-up
+            `}
+            style={{ animationDelay: `${index * 150}ms` }}
           >
             <div className="card-content flex items-center justify-between">
               <div className="user-info flex items-center space-x-4">

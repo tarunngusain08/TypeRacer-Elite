@@ -1,23 +1,8 @@
-import { authService } from './auth.service';
-import axios from 'axios';
+import axiosInstance from './axios';
 import { authApi } from './auth.service';
 
-const API_BASE = 'http://localhost:8080/api';
-
-const getHeaders = () => {
-  const token = authService.getToken();
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-  };
-};
-
-const api = axios.create({
-  baseURL: API_BASE
-});
-
 // Add auth token to requests
-api.interceptors.request.use((config) => {
+axiosInstance.interceptors.request.use((config) => {
   const token = authApi.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -40,7 +25,7 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-api.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
@@ -52,7 +37,7 @@ api.interceptors.response.use(
         })
           .then(token => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
+            return axiosInstance(originalRequest);
           })
           .catch(err => Promise.reject(err));
       }
@@ -64,7 +49,7 @@ api.interceptors.response.use(
         const { accessToken } = await authApi.refreshToken();
         processQueue(null, accessToken);
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
+        return axiosInstance(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
         authApi.logout();
@@ -81,12 +66,12 @@ api.interceptors.response.use(
 
 export const gameApi = {
   create: async (text: string) => {
-    const res = await api.post('/games', { text });
+    const res = await axiosInstance.post('/games', { text });
     return res.data;
   },
 
   join: async (gameId: string, player: { name: string, id: string }) => {
-    const res = await api.post(`/games/${gameId}/join`, player);
+    const res = await axiosInstance.post(`/games/${gameId}/join`, player);
     return res.data;
   },
 
@@ -96,42 +81,18 @@ export const gameApi = {
     wpm: number,
     accuracy: number
   }) => {
-    return api.post(`/games/${gameId}/progress`, progress);
+    return axiosInstance.post(`/games/${gameId}/progress`, progress);
   },
 
   getGame: async (gameId: string) => {
-    const res = await api.get(`/games/${gameId}`);
+    const res = await axiosInstance.get(`/games/${gameId}`);
     return res.data;
   },
 
   getActiveGames: async () => {
-    const res = await api.get('/games');
+    const res = await axiosInstance.get('/games');
     return res.data;
   }
 };
 
-export const authApi = {
-  register: async (userData: { username: string; email: string; password: string }) => {
-    const res = await api.post('/auth/register', userData);
-    const data = res.data;
-    if (data.token) {
-      authService.setToken(data.token);
-    }
-    return data;
-  },
-
-  login: async (credentials: { email: string; password: string }) => {
-    const res = await api.post('/auth/login', credentials);
-    const data = res.data;
-    if (data.token) {
-      authService.setToken(data.token);
-    }
-    return data;
-  },
-
-  logout: () => {
-    authService.removeToken();
-  }
-};
-
-export default api; 
+export default axiosInstance; 

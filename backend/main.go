@@ -59,7 +59,7 @@ func main() {
 
 	// Protected routes
 	protected := api.PathPrefix("/").Subrouter()
-	protected.Use(middleware.AuthMiddleware)
+	protected.Use(middleware.AuthMiddlewareHandler)
 	protected.HandleFunc("/auth/me", authHandler.GetMe).Methods("GET")
 	protected.HandleFunc("/games", gameHandler.CreateGame).Methods("POST")
 	protected.HandleFunc("/games/{id}/join", gameHandler.JoinGame).Methods("POST")

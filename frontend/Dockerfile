@@ -12,17 +12,17 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Add axios explicitly
+RUN npm install axios @types/axios
+
 # Build the app
 RUN npm run build
 
-# Install serve
-RUN npm install -g serve
-
-# Add this line to allow connections from outside the container
-ENV VITE_HOST=0.0.0.0
-
+# Expose port
 EXPOSE 3000
-CMD ["serve", "-s", "dist", "-l", "3000"]
+
+# Start the app
+CMD ["npm", "run", "dev"]
 
 # Final stage
 # FROM nginx:alpine

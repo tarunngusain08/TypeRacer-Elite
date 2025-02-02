@@ -32,3 +32,10 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		next.ServeHTTP(w, r)
 	}
 }
+
+// Add this function to work with gorilla/mux middleware
+func AuthMiddlewareHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		AuthMiddleware(next.ServeHTTP)(w, r)
+	})
+}

@@ -4,8 +4,15 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  optimizeDeps: {
-    exclude: ['lucide-react'],
+  build: {
+    rollupOptions: {
+      external: ['axios'],
+    },
+  },
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
   },
   server: {
     host: true,
@@ -15,7 +22,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://backend:8080',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },

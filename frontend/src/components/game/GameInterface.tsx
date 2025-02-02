@@ -82,7 +82,7 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ gameId, playerId, onCompl
   };
 
   return (
-    <div className="space-y-8">
+    <div className="animate-scale-in space-y-8">
       {/* Text to Type */}
       <div className="bg-gray-800/30 rounded-xl p-6 font-mono text-lg leading-relaxed border border-gray-700/50">
         {sampleText.split('').map((char, index) => (
@@ -99,10 +99,11 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ gameId, playerId, onCompl
             {char}
           </span>
         ))}
+        <span className="w-0.5 h-5 bg-purple-400 inline-block ml-0.5 animate-type-cursor" />
       </div>
 
-      {/* Stats */}
-      <div className="flex justify-between items-center bg-gray-800/30 rounded-lg p-4">
+      {/* Stats with floating animation */}
+      <div className="flex justify-between items-center bg-gray-800/30 rounded-lg p-4 animate-float">
         <div className="text-purple-400">
           <span className="font-mono text-xl">{wpm}</span>
           <span className="text-sm ml-2">WPM</span>
@@ -113,24 +114,27 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ gameId, playerId, onCompl
         </div>
       </div>
 
-      {/* Input Field */}
+      {/* Input Field with glow effect */}
       <input
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        className="w-full bg-gray-800/30 rounded-xl p-6 font-mono text-lg border border-gray-700/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent placeholder-gray-600"
+        className="w-full bg-gray-800/30 rounded-xl p-6 font-mono text-lg border border-gray-700/50 
+                  focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent 
+                  placeholder-gray-600 animate-pulse-glow"
         placeholder="Start typing when the race begins..."
         autoFocus
       />
 
-      {/* Progress Bar */}
+      {/* Progress Bar with shine effect */}
       <div className="relative">
         <div className="h-3 bg-gray-800/50 rounded-full overflow-hidden backdrop-blur-sm">
           <div
-            className="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-300 relative"
+            className="h-full bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 
+                       transition-all duration-300 relative bg-[length:200%_100%] animate-progress-shine"
             style={{ width: `${(input.length / sampleText.length) * 100}%` }}
           >
-            <div className="absolute -top-8 right-0 transform translate-x-1/2">
+            <div className="absolute -top-8 right-0 transform translate-x-1/2 animate-bounce-in">
               <img
                 src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=50&h=50&fit=crop"
                 alt="Player"

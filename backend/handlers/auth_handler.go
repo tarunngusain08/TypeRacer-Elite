@@ -168,3 +168,22 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Logged out successfully"})
 }
+
+func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("user_id")
+	if userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var user models.User
+	if result := h.db.First(&user, "id = ?", userID); result.Error != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// Don't send password hash in response
+	user.PasswordHash = ""
+
+	json.NewEncoder(w).Encode(user)
+}

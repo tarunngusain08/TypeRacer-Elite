@@ -29,7 +29,13 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
   }[type];
 
   return (
-    <div className={`fixed bottom-4 right-4 p-4 rounded-lg border ${bgColor} backdrop-blur-lg animate-slide-up`}>
+    <div 
+      className={`
+        fixed bottom-4 right-4 p-4 rounded-lg border ${bgColor} 
+        backdrop-blur-lg animate-slide-in-right
+        transform transition-all duration-300 hover:scale-105
+      `}
+    >
       <div className="flex items-center space-x-2">
         <span className={textColor}>{message}</span>
         <button onClick={onClose} className={`${textColor} hover:opacity-75`}>
