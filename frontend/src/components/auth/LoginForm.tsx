@@ -11,10 +11,8 @@ interface LoginFormProps {
 const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const { login } = useAuth();
   const { showToast } = useToast();
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  });
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -24,7 +22,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
     setIsLoading(true);
 
     try {
-      await login(formData.username.trim(), formData.password);
+      await login(username, password);
       showToast('Login successful!', 'success');
       onSuccess();
     } catch (err: any) {
@@ -60,10 +58,10 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         <motion.input
           whileFocus={{ scale: 1.01 }}
           type="text"
-          value={formData.username}
+          value={username}
           onChange={(e) => {
             setError('');
-            setFormData(prev => ({ ...prev, username: e.target.value }));
+            setUsername(e.target.value);
           }}
           className="w-full px-4 py-2 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 
                      focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20
@@ -79,10 +77,10 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         <motion.input
           whileFocus={{ scale: 1.01 }}
           type="password"
-          value={formData.password}
+          value={password}
           onChange={(e) => {
             setError('');
-            setFormData(prev => ({ ...prev, password: e.target.value }));
+            setPassword(e.target.value);
           }}
           className="w-full px-4 py-2 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 
                      focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20

@@ -1,4 +1,4 @@
-import axios from './axios';
+import axios from 'axios';
 
 interface TokenPair {
   accessToken: string;
@@ -16,9 +16,14 @@ interface AuthResponse {
 export const authApi = {
   async login(username: string, password: string): Promise<AuthResponse> {
     try {
-      const response = await axios.post<AuthResponse>('/api/auth/login', {
+      const response = await axios.post('/api/auth/login', {
         username,
         password
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
       });
       
       if (response.data.tokens) {
@@ -29,13 +34,20 @@ export const authApi = {
       throw new Error('No tokens received');
     } catch (error: any) {
       console.error('Login error:', error);
+      
       if (error.response) {
-        const message = typeof error.response.data === 'string' 
-          ? error.response.data 
-          : 'Login failed';
-        throw new Error(message);
+        // Server responded with error status
+        const errorMessage = error.response.data?.message || 
+                           error.response.data || 
+                           'Failed to login. Please check your credentials.';
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        // Request was made but no response received
+        throw new Error('Server is not responding. Please try again later.');
+      } else {
+        // Error in request setup
+        throw new Error('Failed to make request. Please check your connection.');
       }
-      throw error;
     }
   },
 
@@ -59,8 +71,8 @@ export const authApi = {
   async register(username: string, password: string) {
     try {
       const response = await axios.post('/api/auth/register', {
-        username: username.trim(),
-        password,
+        username,
+        password
       });
       
       if (response.data.tokens) {
@@ -73,23 +85,20 @@ export const authApi = {
       console.error('Registration error:', error);
       
       if (error.response) {
-        const message = typeof error.response.data === 'string' 
-          ? error.response.data 
-          : 'Registration failed';
-        throw new Error(message);
-      } else if (error.request) {
-        console.error('No response received:', error.request);
-        throw new Error('Server is not responding. Please try again later.');
-      } else {
-        console.error('Request setup error:', error.message);
-        throw new Error('Failed to make request. Please check your connection.');
+        throw new Error(error.response.data.message || 'Failed to register');
       }
+      throw new Error('Network error occurred');
     }
   },
 
-  logout() {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+  logout: async () => {
+    try {
+      await axios.post('/api/auth/logout', {}, {
+        withCredentials: true
+      });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   },
 
   isAuthenticated() {
@@ -118,9 +127,11 @@ export const authApi = {
     try {
       const response = await axios.get(`/api/auth/check-username/${username}`);
       return response.data;
-    } catch (error) {
-      console.error('Username check failed:', error);
-      return { exists: false };
+    } catch (error: any) {
+      if (error.response) {
+        throw new Error(error.response.data.message || 'Failed to check username');
+      }
+      throw new Error('Network error occurred');
     }
   }
 }; 
