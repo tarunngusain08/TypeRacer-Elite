@@ -1,45 +1,35 @@
 package db
 
 import (
-	"errors"
+	"fmt"
 	"log"
+	"os"
 
 	"typerace/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-type Database struct {
-	*gorm.DB
-}
+func InitDB() (*gorm.DB, error) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = "postgres://postgres:postgres@postgres:5432/typerace?sslmode=disable"
+	}
 
-func InitDB() (*Database, error) {
-	dsn := "host=db user=postgres password=postgres dbname=typeracer port=5432 sslmode=disable"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to database: %v", err)
 	}
 
-	// Auto Migrate the schema
-	err = db.AutoMigrate(&models.User{}, &models.Game{}, &models.GameResult{})
-	if err != nil {
-		return nil, err
+	if err := AutoMigrate(db); err != nil {
+		return nil, fmt.Errorf("failed to migrate database: %v", err)
 	}
 
-	return &Database{db}, nil
-}
-
-func (db *Database) GetUserByUsername(username string) (*models.User, error) {
-	var user models.User
-	result := db.Where("username = ?", username).First(&user)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errors.New("user not found")
-		}
-		return nil, result.Error
-	}
-	return &user, nil
+	return db, nil
 }
 
 func autoMigrate(db *gorm.DB) error {
