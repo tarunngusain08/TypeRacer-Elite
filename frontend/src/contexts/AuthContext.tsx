@@ -12,7 +12,6 @@ interface AuthContextType {
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
   setError: (error: string | null) => void;
-  loading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -24,7 +23,6 @@ export const AuthContext = createContext<AuthContextType>({
   register: async () => {},
   logout: () => {},
   setError: () => {},
-  loading: false
 });
 
 interface AuthState {
@@ -119,8 +117,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // After registration, user needs to login
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = () => {
+    authApi.logout();
+    if (window.gameSocket) {
+      window.gameSocket.close();
+    }
+    setGameState(null);
     setState(prev => ({
       ...prev,
       isAuthenticated: false,
@@ -134,9 +136,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...state,
       login,
       register,
-      logout,
-      setError,
-      loading: state.isLoading
+      logout: handleLogout,
+      setError 
     }}>
       {state.isLoading ? (
         <div className="min-h-screen flex items-center justify-center">

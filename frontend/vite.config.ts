@@ -22,14 +22,14 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://backend:8080',
+        target: 'http://localhost:8080', // Change 'backend' to 'localhost'
         changeOrigin: true,
         secure: false,
       },
       '/ws': {
-        target: 'ws://backend:8080',
-        ws: true
-      }
+        target: 'ws://localhost:8080', // Change 'backend' to 'localhost'
+        ws: true,
+      },
     },
   },
 });

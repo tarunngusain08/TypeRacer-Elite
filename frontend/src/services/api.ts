@@ -1,15 +1,8 @@
-import axios from 'axios';
+import axiosInstance from './axios';
 import { authApi } from './auth.service';
 
-const axiosInstance = axios.create({
-  baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
 // Add auth token to requests
-axiosInstance.interceptors.request.use((config: any) => {
+axiosInstance.interceptors.request.use((config) => {
   const token = authApi.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -71,36 +64,24 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-interface GameProgress {
-  progress: number;
-  wpm: number;
-  accuracy: number;
-}
-
 export const gameApi = {
-  async createGame() {
-    const response = await axiosInstance.post('/games');
-    return response.data;
+  create: async (text: string) => {
+    const res = await axiosInstance.post('/games', { text });
+    return res.data;
   },
 
-  async joinGame(gameId: string) {
-    const response = await axiosInstance.post(`/games/${gameId}/join`);
-    return response.data;
+  join: async (gameId: string, player: { name: string, id: string }) => {
+    const res = await axiosInstance.post(`/games/${gameId}/join`, player);
+    return res.data;
   },
 
-  async updateProgress(gameId: string, progress: GameProgress) {
-    const response = await axiosInstance.post(`/games/${gameId}/progress`, progress);
-    return response.data;
-  },
-
-  async endGame(gameId: string, stats: { wpm: number; accuracy: number }) {
-    const response = await axiosInstance.post(`/games/${gameId}/end`, stats);
-    return response.data;
-  },
-
-  async getLeaderboard() {
-    const response = await axiosInstance.get('/leaderboard');
-    return response.data;
+  updateProgress: async (gameId: string, progress: {
+    playerId: string,
+    progress: number,
+    wpm: number,
+    accuracy: number
+  }) => {
+    return axiosInstance.post(`/games/${gameId}/progress`, progress);
   },
 
   getGame: async (gameId: string) => {
