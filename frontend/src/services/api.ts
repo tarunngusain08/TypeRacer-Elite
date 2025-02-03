@@ -1,8 +1,16 @@
-import axiosInstance from './axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
 import { authApi } from './auth.service';
+import { getErrorMessage } from '../utils/errorHandler';
+
+// Set base URL for all requests
+axios.defaults.baseURL = 'http://localhost:8080/api';
+axios.defaults.withCredentials = true;
 
 // Add auth token to requests
-axiosInstance.interceptors.request.use((config) => {
+axios.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  // Ensure headers is defined
+  config.headers = config.headers || {};
+  
   const token = authApi.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -25,53 +33,30 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-axiosInstance.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+axios.interceptors.response.use(
+  (response: any) => response,
+  async (error: any) => {
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then(token => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return axiosInstance(originalRequest);
-          })
-          .catch(err => Promise.reject(err));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const { accessToken } = await authApi.refreshToken();
-        processQueue(null, accessToken);
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        authApi.logout();
-        window.location.href = '/';
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
+      window.location.href = '/login';
+      const errorDetails = getErrorMessage(error);
+      return Promise.reject(errorDetails);
     }
 
-    return Promise.reject(error);
+    const errorDetails = getErrorMessage(error);
+    return Promise.reject(errorDetails);
   }
 );
 
 export const gameApi = {
   create: async (text: string) => {
-    const res = await axiosInstance.post('/games', { text });
+    const res = await axios.post('/api/games', { text });
     return res.data;
   },
 
   join: async (gameId: string, player: { name: string, id: string }) => {
-    const res = await axiosInstance.post(`/games/${gameId}/join`, player);
+    const res = await axios.post(`/api/games/${gameId}/join`, player);
     return res.data;
   },
 
@@ -81,18 +66,18 @@ export const gameApi = {
     wpm: number,
     accuracy: number
   }) => {
-    return axiosInstance.post(`/games/${gameId}/progress`, progress);
+    return axios.post(`/api/games/${gameId}/progress`, progress);
   },
 
   getGame: async (gameId: string) => {
-    const res = await axiosInstance.get(`/games/${gameId}`);
+    const res = await axios.get(`/api/games/${gameId}`);
     return res.data;
   },
 
   getActiveGames: async () => {
-    const res = await axiosInstance.get('/games');
+    const res = await axios.get('/api/games');
     return res.data;
   }
 };
 
-export default axiosInstance; 
+export default axios; 

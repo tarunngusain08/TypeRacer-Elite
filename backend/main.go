@@ -5,12 +5,16 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/rs/cors"
 
+	"context"
+	"os"
+	"time"
 	"typerace/db"
 	"typerace/handlers"
 	"typerace/middleware"
 	"typerace/websocket"
+
+	"github.com/go-redis/redis/v8"
 )
 
 func main() {
@@ -38,9 +42,10 @@ func main() {
 	api := router.PathPrefix("/api").Subrouter()
 
 	// Auth routes
+	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/register", authHandler.Register).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST")
 	api.HandleFunc("/auth/refresh", authHandler.RefreshToken).Methods("POST")
+	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST")
 	api.HandleFunc("/auth/me", authHandler.GetMe).Methods("GET")
 	api.HandleFunc("/auth/check-username/{username}", authHandler.CheckUsername).Methods("GET")
 
@@ -74,12 +79,39 @@ func main() {
 }
 
 func setupCORS(handler http.Handler) http.Handler {
-	return cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300,
-	}).Handler(handler)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.Header().Set("Access-Control-Max-Age", "86400")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		handler.ServeHTTP(w, r)
+	})
+}
+
+var Ctx = context.Background()
+
+// InitRedis initializes a new Redis client.
+func InitRedis() *redis.Client {
+	redisURL := os.Getenv("REDIS_URL")
+
+	// In our docker-compose, REDIS_URL is like "redis:6379"
+	opts := &redis.Options{
+		Addr: redisURL,
+	}
+
+	client := redis.NewClient(opts)
+	return client
+}
+
+// SetWithTTL stores a key with a TTL of one hour.
+func SetWithTTL(client *redis.Client, key string, value interface{}) error {
+	return client.Set(Ctx, key, value, time.Hour).Err()
 }

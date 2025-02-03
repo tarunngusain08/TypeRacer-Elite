@@ -16,7 +16,7 @@ interface AuthResponse {
 export const authApi = {
   async login(username: string, password: string): Promise<AuthResponse> {
     try {
-      const response = await axios.post<AuthResponse>('/api/auth/login', {
+      const response = await axios.post<AuthResponse>('/auth/login', {
         username,
         password
       });
@@ -42,7 +42,7 @@ export const authApi = {
   async refreshToken(): Promise<TokenPair> {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
-      const response = await axios.post<{ tokens: TokenPair }>('/api/auth/refresh', {
+      const response = await axios.post<{ tokens: TokenPair }>('/auth/refresh', {
         refreshToken
       });
       
@@ -58,7 +58,7 @@ export const authApi = {
 
   async register(username: string, password: string) {
     try {
-      const response = await axios.post('/api/auth/register', {
+      const response = await axios.post('/auth/register', {
         username: username.trim(),
         password,
       });
@@ -106,7 +106,7 @@ export const authApi = {
 
   async getMe() {
     try {
-      const response = await axios.get('/api/auth/me');
+      const response = await axios.get('/auth/me');
       return response.data;
     } catch (error) {
       console.error('Failed to fetch user data:', error);
@@ -116,7 +116,7 @@ export const authApi = {
 
   async checkUsername(username: string): Promise<{ exists: boolean }> {
     try {
-      const response = await axios.get(`/api/auth/check-username/${username}`);
+      const response = await axios.get(`/auth/check-username/${username}`);
       return response.data;
     } catch (error) {
       console.error('Username check failed:', error);

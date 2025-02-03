@@ -3,6 +3,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { motion } from 'framer-motion';
+import { ApiError } from '../../utils/errorHandler';
+import { Alert } from '../ui/Alert';
 
 interface LoginFormProps {
   onSuccess: () => void;
@@ -15,12 +17,12 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
     username: '',
     password: ''
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ApiError | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     setIsLoading(true);
 
     try {
@@ -29,7 +31,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       onSuccess();
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Failed to login. Please try again.');
+      setError(err as ApiError);
       showToast(err.message || 'Failed to login', 'error');
     } finally {
       setIsLoading(false);
@@ -45,14 +47,11 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       transition={{ duration: 0.3 }}
     >
       {error && (
-        <motion.div 
-          className="text-red-500 text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.2 }}
-        >
-          {error}
-        </motion.div>
+        <Alert 
+          type="error" 
+          message={error.message}
+          className="mb-4"
+        />
       )}
       
       <div className="space-y-2">
@@ -62,7 +61,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
           type="text"
           value={formData.username}
           onChange={(e) => {
-            setError('');
+            setError(null);
             setFormData(prev => ({ ...prev, username: e.target.value }));
           }}
           className="w-full px-4 py-2 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 
@@ -81,7 +80,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
           type="password"
           value={formData.password}
           onChange={(e) => {
-            setError('');
+            setError(null);
             setFormData(prev => ({ ...prev, password: e.target.value }));
           }}
           className="w-full px-4 py-2 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 

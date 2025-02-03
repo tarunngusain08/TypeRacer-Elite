@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import { NavBar } from './components/ui/NavBar';
 import Home from './pages/Home';
 import Game from './pages/Game';
 import Login from './pages/Login';
@@ -11,6 +12,7 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
+      <NavBar />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route 

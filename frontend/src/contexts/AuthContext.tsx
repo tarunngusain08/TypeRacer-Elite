@@ -32,6 +32,10 @@ interface AuthState {
   error: string | null;
 }
 
+interface GameState {
+  // Define the structure of your GameState here
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
@@ -39,6 +43,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading: true,
     error: null
   });
+
+  const [gameState, setGameState] = useState<GameState | null>(null);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,17 +54,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const checkTokenExpiration = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (token) {
       try {
         const decodedToken = JSON.parse(atob(token.split('.')[1]));
         if (decodedToken.exp * 1000 < Date.now()) {
-          logout();
+          handleLogout();
           return false;
         }
         return true;
       } catch {
-        logout();
+        handleLogout();
         return false;
       }
     }
@@ -80,15 +86,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserData = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       if (token) {
-        // Fetch user data using token
-        // const userData = await authApi.getMe();
-        // setState(prev => ({ ...prev, user: userData }));
+        const userData = await authApi.getMe();
+        setState(prev => ({ ...prev, user: userData }));
       }
     } catch (error) {
       console.error('Failed to fetch user data:', error);
-      logout();
+      handleLogout();
     }
   };
 
@@ -122,7 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (window.gameSocket) {
       window.gameSocket.close();
     }
-    setGameState(null);
     setState(prev => ({
       ...prev,
       isAuthenticated: false,
