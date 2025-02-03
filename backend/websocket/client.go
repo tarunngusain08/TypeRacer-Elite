@@ -1,6 +1,8 @@
 package websocket
 
 import (
+	"bytes"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -12,11 +14,6 @@ const (
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 512
-)
-
-var (
-	newline = []byte{'\n'}
-	space   = []byte{' '}
 )
 
 type Client struct {
@@ -47,10 +44,17 @@ func (c *Client) ReadPump() {
 			}
 			break
 		}
-		c.Hub.Broadcast <- &Message{
-			GameID:  c.GameID,
-			Content: message,
+		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+
+		// Parse incoming message
+		var msg Message
+		if err := json.Unmarshal(message, &msg); err != nil {
+			log.Printf("error parsing message: %v", err)
+			continue
 		}
+
+		// Broadcast the message to the game
+		c.Hub.BroadcastToGame(c.GameID, msg)
 	}
 }
 
@@ -76,12 +80,6 @@ func (c *Client) WritePump() {
 			}
 			w.Write(message)
 
-			n := len(c.Send)
-			for i := 0; i < n; i++ {
-				w.Write(newline)
-				w.Write(<-c.Send)
-			}
-
 			if err := w.Close(); err != nil {
 				return
 			}
@@ -93,3 +91,13 @@ func (c *Client) WritePump() {
 		}
 	}
 }
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+var (
+	newline = []byte{'\n'}
+	space   = []byte{' '}
+)

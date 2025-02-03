@@ -9,16 +9,16 @@ import (
 )
 
 type User struct {
-	ID           string  `gorm:"primarykey;type:uuid;default:gen_random_uuid()"`
-	Username     string  `gorm:"unique;not null"`
-	Email        string  `gorm:"unique;default:null"`
-	PasswordHash string  `gorm:"not null"`
-	Avatar       string  `json:"avatar"`
-	TotalRaces   int     `json:"totalRaces" gorm:"default:0"`
-	AverageWPM   float64 `json:"averageWpm" gorm:"default:0"`
-	BestWPM      float64 `json:"bestWpm" gorm:"default:0"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID           string    `json:"id" gorm:"primaryKey"`
+	Username     string    `json:"username" gorm:"unique"`
+	Email        string    `gorm:"unique;default:null"`
+	PasswordHash string    `json:"-"`
+	Avatar       string    `json:"avatar"`
+	TotalRaces   int       `json:"totalRaces" gorm:"default:0"`
+	AverageWPM   float64   `json:"averageWpm" gorm:"default:0"`
+	BestWPM      float64   `json:"bestWpm" gorm:"default:0"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {

@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"typerace/models"
+	"typerace/db"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 type AuthHandler struct {
-	db *gorm.DB
+	db *db.Database
 }
 
-func NewAuthHandler(db *gorm.DB) *AuthHandler {
+func NewAuthHandler(db *db.Database) *AuthHandler {
 	return &AuthHandler{
 		db: db,
 	}
@@ -39,6 +39,16 @@ type RegisterRequest struct {
 type TokenPair struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
+}
+
+type User struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+}
+
+type LoginResponse struct {
+	Token string `json:"token"`
+	User  User   `json:"user"`
 }
 
 func generateTokenPair(user *models.User, secret string) (*TokenPair, error) {
@@ -167,33 +177,78 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Received login request at: %s", r.URL.Path)
+	log.Printf("Request method: %s", r.Method)
+
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.Printf("Failed to decode login request: %v", err)
+		http.Error(w, "Invalid request format", http.StatusBadRequest)
 		return
 	}
 
-	var user models.User
-	if result := h.db.Where("username = ?", req.Username).First(&user); result.Error != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-		return
-	}
-
-	tokens, err := generateTokenPair(&user, "your-secret-key") // Use env variable in production
+	log.Printf("Login attempt for username: %s", req.Username)
+	// Find user
+	user, err := h.db.GetUserByUsername(req.Username)
 	if err != nil {
-		http.Error(w, "Error generating tokens", http.StatusInternalServerError)
+		log.Printf("Login failed - invalid username: %s", req.Username)
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"user":   user,
-		"tokens": tokens,
+	// Check password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		log.Printf("Login failed - invalid password for user: %s", req.Username)
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate JWT token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id":  user.ID,
+		"username": user.Username,
+		"exp":      time.Now().Add(time.Hour * 24).Unix(),
 	})
+
+	tokenString, err := token.SignedString([]byte("your-secret-key"))
+	if err != nil {
+		log.Printf("Failed to generate token: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Set cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    tokenString,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   86400, // 24 hours
+	})
+
+	// Set response headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+
+	// Return response
+	response := LoginResponse{
+		Token: tokenString,
+		User: User{
+			ID:       user.ID,
+			Username: user.Username,
+		},
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode login response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Successful login for user: %s", user.Username)
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {

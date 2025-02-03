@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -130,51 +132,43 @@ func (h *GameHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 func (h *GameHandler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	gameID := vars["id"]
+	userID := r.Header.Get("user_id")
 
-	var progressUpdate struct {
-		PlayerID string  `json:"playerId"`
+	var req struct {
 		Progress float64 `json:"progress"`
 		WPM      int     `json:"wpm"`
 		Accuracy float64 `json:"accuracy"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&progressUpdate); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	game, exists := h.Games[gameID]
-	if !exists {
-		http.Error(w, "Game not found", http.StatusNotFound)
+	// Update game progress in Redis
+	progressKey := fmt.Sprintf("game:%s:progress:%s", gameID, userID)
+	err := h.redis.HSet(context.Background(), progressKey, map[string]interface{}{
+		"progress": req.Progress,
+		"wpm":      req.WPM,
+		"accuracy": req.Accuracy,
+	}).Err()
+
+	if err != nil {
+		log.Printf("Error updating progress: %v", err)
+		http.Error(w, "Failed to update progress", http.StatusInternalServerError)
 		return
 	}
 
-	game.Mu.Lock()
-	for _, player := range game.Players {
-		if player.ID.String() == progressUpdate.PlayerID {
-			player.Progress = progressUpdate.Progress
-			player.WPM = progressUpdate.WPM
-			player.Accuracy = progressUpdate.Accuracy
-
-			// Create a game event
-			event := models.GameEvent{
-				Timestamp: time.Now(),
-				PlayerID:  progressUpdate.PlayerID,
-				Type:      "progress",
-				Data:      progressUpdate,
-			}
-			game.ReplayData = append(game.ReplayData, event)
-			break
-		}
-	}
-	game.Mu.Unlock()
-
-	// Broadcast progress update to all clients
-	updateMsg, _ := json.Marshal(map[string]interface{}{
-		"type": "progress",
-		"data": progressUpdate,
+	// Broadcast progress update to all players
+	h.Hub.BroadcastToGame(gameID, websocket.Message{
+		Type: "progress_update",
+		Data: map[string]interface{}{
+			"user_id":  userID,
+			"progress": req.Progress,
+			"wpm":      req.WPM,
+			"accuracy": req.Accuracy,
+		},
 	})
-	h.broadcastToGame(gameID, updateMsg)
 
 	w.WriteHeader(http.StatusOK)
 }
