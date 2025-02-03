@@ -22,16 +22,14 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://backend:8080',
+        target: 'http://localhost:8080', // Change 'backend' to 'localhost'
         changeOrigin: true,
         secure: false,
-        // Don't rewrite the path since our backend expects /api prefix
-        // rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/ws': {
-        target: 'ws://backend:8080',
+        target: 'ws://localhost:8080', // Change 'backend' to 'localhost'
         ws: true,
-      }
+      },
     },
   },
 });
