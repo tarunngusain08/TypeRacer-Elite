@@ -1,12 +1,18 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut } from 'lucide-react'; // Import the logout icon
 
 export const NavBar = () => {
   const { logout, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Don't show navbar on landing page
+  if (!isAuthenticated && location.pathname === '/') {
+    return null;
+  }
 
   const handleLogout = async () => {
     try {

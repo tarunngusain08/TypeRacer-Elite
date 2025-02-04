@@ -80,15 +80,19 @@ func main() {
 
 func setupCORS(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Requested-With")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		origin := r.Header.Get("Origin")
+		if origin == "http://localhost:3000" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
 
-		// Handle preflight requests
-		if r.Method == "OPTIONS" {
-			w.Header().Set("Access-Control-Max-Age", "86400")
-			w.WriteHeader(http.StatusOK)
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, x-user-id")
+		w.Header().Set("Access-Control-Max-Age", "86400") // Cache preflight response for 1 day
+
+		// Handle preflight request
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 

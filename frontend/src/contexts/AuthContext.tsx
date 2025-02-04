@@ -73,16 +73,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initAuth = async () => {
-      const isValid = checkTokenExpiration();
-      setState(prev => ({ ...prev, isAuthenticated: isValid }));
-      if (isValid) {
-        await fetchUserData();
+      const token = localStorage.getItem('accessToken');
+      const storedUser = localStorage.getItem('user');
+      
+      if (token && storedUser) {
+        try {
+          // Verify token validity
+          const isValid = checkTokenExpiration();
+          if (isValid) {
+            // Verify token with backend
+            const userData = await authApi.getMe();
+            if (userData) {
+              setState(prev => ({
+                ...prev,
+                isAuthenticated: true,
+                user: userData,
+                isLoading: false
+              }));
+            } else {
+              // If getMe fails, clear everything
+              handleLogout();
+            }
+            // If we're on login page and user is authenticated, redirect to home
+            if (location.pathname === '/login') {
+              navigate('/dashboard');
+            }
+            return;
+          }
+        } catch (error) {
+          console.error('Session validation failed:', error);
+          handleLogout();
+        }
       }
       setState(prev => ({ ...prev, isLoading: false }));
     };
     
     initAuth();
-  }, []);
+  }, [navigate, location.pathname]);
 
   const fetchUserData = async () => {
     try {
@@ -107,6 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading: false,
         error: null
       });
+      navigate('/dashboard');
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -123,16 +151,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const handleLogout = () => {
-    authApi.logout();
+    // Clear all auth-related data from localStorage
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    
     if (window.gameSocket) {
       window.gameSocket.close();
     }
+    
     setState(prev => ({
       ...prev,
       isAuthenticated: false,
       user: null,
     }));
-    navigate('/');
+    
+    navigate('/login');
   };
 
   return (

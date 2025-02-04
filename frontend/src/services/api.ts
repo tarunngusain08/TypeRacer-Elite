@@ -3,8 +3,9 @@ import { authApi } from './auth.service';
 import { getErrorMessage } from '../utils/errorHandler';
 
 // Set base URL for all requests
-axios.defaults.baseURL = 'http://localhost:8080/api';
+axios.defaults.baseURL = 'http://localhost:8080';
 axios.defaults.withCredentials = true;
+axios.defaults.headers.common['accept'] = 'application/json';
 
 // Add auth token to requests
 axios.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -13,7 +14,12 @@ axios.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   
   const token = authApi.getAccessToken();
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    // Set headers explicitly without using defaults
+    Object.assign(config.headers, {
+      'authorization': `Bearer ${token}`,
+      'accept': 'application/json'
+    });
+    console.log('Request headers:', config.headers); // Debug log
   }
   return config;
 });
