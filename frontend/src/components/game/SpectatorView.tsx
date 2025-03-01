@@ -22,7 +22,7 @@ export const SpectatorView = () => {
 
     fetchGames();
     // Poll for new games every 5 seconds
-    const interval = setInterval(fetchGames, 5000);
+    const interval = setInterval(fetchGames, 3000);
     return () => clearInterval(interval);
   }, []);
 
