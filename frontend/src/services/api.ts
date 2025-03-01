@@ -14,12 +14,10 @@ axios.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   
   const token = authApi.getAccessToken();
   if (token) {
-    // Set headers explicitly without using defaults
     Object.assign(config.headers, {
       'authorization': `Bearer ${token}`,
       'accept': 'application/json'
     });
-    console.log('Request headers:', config.headers); // Debug log
   }
   return config;
 });
