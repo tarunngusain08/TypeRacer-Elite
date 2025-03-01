@@ -17,21 +17,23 @@ const (
 	Finished GameStatus = "finished"
 )
 
+var Mu = &sync.Mutex{}
+
 type Game struct {
-	ID           uuid.UUID   `gorm:"type:uuid;primary_key;"`
+	ID           uuid.UUID   `gorm:"type:uuid;default:uuid_generate_v4()" json:"id"`
+	RoundID      uuid.UUID   `gorm:"type:uuid" json:"round_id"`
 	Status       GameStatus  `gorm:"type:varchar(20);not null"`
-	Text         string      `gorm:"not null"`
-	Players      []Player    `gorm:"many2many:game_players;"`
+	Text         string      `json:"text"`
+	Players      []Player    `json:"players"`
 	ReplayData   []GameEvent `gorm:"type:jsonb"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	Mu           sync.Mutex
-	Category     string `json:"category"`
-	Difficulty   string `json:"difficulty"`
-	IsPrivate    bool   `json:"isPrivate"`
-	Password     string `json:"-"`
-	CreatedBy    string `json:"createdBy"`
-	TournamentID string `json:"tournamentId,omitempty"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
+	Category     string      `json:"category"`
+	Difficulty   string      `json:"difficulty"`
+	IsPrivate    bool        `json:"isPrivate"`
+	Password     string      `json:"-"`
+	CreatedBy    string      `json:"createdBy"`
+	TournamentID string      `json:"tournamentId,omitempty"`
 }
 
 type Player struct {
@@ -74,8 +76,8 @@ func NewGame(id string, text string) *Game {
 }
 
 func (g *Game) AddPlayer(player *Player) bool {
-	g.Mu.Lock()
-	defer g.Mu.Unlock()
+	Mu.Lock()
+	defer Mu.Unlock()
 
 	if len(g.Players) >= 4 {
 		return false
@@ -86,8 +88,8 @@ func (g *Game) AddPlayer(player *Player) bool {
 }
 
 func (g *Game) Start() {
-	g.Mu.Lock()
-	defer g.Mu.Unlock()
+	Mu.Lock()
+	defer Mu.Unlock()
 
 	now := time.Now()
 	g.CreatedAt = now
