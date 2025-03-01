@@ -92,7 +92,7 @@ func (h *GameHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Enable CORS for WebSocket
 	websocket.Upgrader.CheckOrigin = func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
-		return origin == "http://localhost:3000"
+		return origin == "http://localhost:3001"
 	}
 
 	conn, err := websocket.UpgradeConnection(w, r)
@@ -149,7 +149,7 @@ func (h *GameHandler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	game.Mu.Lock()
+	models.Mu.Lock()
 	for _, player := range game.Players {
 		if player.ID.String() == progressUpdate.PlayerID {
 			player.Progress = progressUpdate.Progress
@@ -167,7 +167,7 @@ func (h *GameHandler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	game.Mu.Unlock()
+	models.Mu.Unlock()
 
 	// Broadcast progress update to all clients
 	updateMsg, _ := json.Marshal(map[string]interface{}{
@@ -190,7 +190,7 @@ func (h *GameHandler) EndGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	game.Mu.Lock()
+	models.Mu.Lock()
 	game.Status = models.Finished
 	endTime := time.Now()
 	game.ReplayData = append(game.ReplayData, models.GameEvent{
@@ -198,7 +198,7 @@ func (h *GameHandler) EndGame(w http.ResponseWriter, r *http.Request) {
 		Type:      "end",
 		Data:      map[string]interface{}{"endTime": endTime},
 	})
-	game.Mu.Unlock()
+	models.Mu.Unlock()
 
 	// Broadcast game end to all clients
 	endMsg, _ := json.Marshal(map[string]interface{}{
