@@ -2,10 +2,7 @@ package db
 
 import (
 	"fmt"
-	"log"
 	"os"
-
-	"typerace/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -28,23 +25,4 @@ func InitDB() (*gorm.DB, error) {
 	}
 
 	return db, nil
-}
-
-func autoMigrate(db *gorm.DB) error {
-	log.Println("Running database migrations...")
-
-	// Add models here
-	err := db.AutoMigrate(
-		&models.User{},
-		&models.Game{},
-		&models.Player{},
-	)
-
-	if err != nil {
-		log.Printf("Error during migration: %v", err)
-		return err
-	}
-
-	log.Println("Database migration completed successfully")
-	return nil
 }
