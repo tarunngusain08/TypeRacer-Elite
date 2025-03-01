@@ -1,26 +1,16 @@
 package models
 
 import (
-    "time"
+	"time"
 )
 
 type Tournament struct {
-    ID          string    `json:"id"`
-    Name        string    `json:"name"`
-    Description string    `json:"description"`
-    StartTime   time.Time `json:"startTime"`
-    EndTime     time.Time `json:"endTime"`
-    MaxPlayers  int       `json:"maxPlayers"`
-    Status      string    `json:"status"` // pending, active, completed
-    Rounds      []*Round  `json:"rounds"`
-}
-
-type Round struct {
-    ID            string    `json:"id"`
-    TournamentID  string    `json:"tournamentId"`
-    RoundNumber   int       `json:"roundNumber"`
-    StartTime     time.Time `json:"startTime"`
-    EndTime       time.Time `json:"endTime"`
-    Participants  []*User   `json:"participants"`
-    Games         []*Game   `json:"games"`
+	ID          string    `json:"id" gorm:"primaryKey"`
+	Name        string    `json:"name" gorm:"not null"`
+	Description string    `json:"description"`
+	StartTime   time.Time `json:"startTime" gorm:"not null"`
+	EndTime     time.Time `json:"endTime" gorm:"not null"`
+	MaxPlayers  int       `json:"maxPlayers" gorm:"not null"`
+	Status      string    `json:"status" gorm:"default:'pending'"` // pending, active, completed
+	Rounds      []*Round  `json:"rounds" gorm:"foreignKey:TournamentID"`
 }
