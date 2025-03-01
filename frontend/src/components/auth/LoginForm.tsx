@@ -7,31 +7,29 @@ import { ApiError } from '../../utils/errorHandler';
 import { Alert } from '../ui/Alert';
 
 interface LoginFormProps {
-  onSuccess: () => void;
+  onSuccess: (username: string, password: string) => Promise<void>;
 }
 
-const LoginForm = ({ onSuccess }: LoginFormProps) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const { login } = useAuth();
   const { showToast } = useToast();
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  });
-  const [error, setError] = useState<ApiError | null>(null);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setError('');
     setIsLoading(true);
 
     try {
-      await login(formData.username.trim(), formData.password);
+      await login(username.trim(), password);
       showToast('Login successful!', 'success');
-      onSuccess();
+      await onSuccess(username.trim(), password);
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err as ApiError);
+      setError('Invalid credentials');
       showToast(err.message || 'Failed to login', 'error');
     } finally {
       setIsLoading(false);
@@ -49,20 +47,20 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
       {error && (
         <Alert 
           type="error" 
-          message={error.message}
+          message={error}
           className="mb-4"
         />
       )}
       
       <div className="space-y-2">
-        <label className="block text-sm font-medium mb-1">Username</label>
+        <label className="block text-sm font-medium mb-1">Email</label>
         <motion.input
           whileFocus={{ scale: 1.01 }}
-          type="text"
-          value={formData.username}
+          type="username"
+          value={username}
           onChange={(e) => {
-            setError(null);
-            setFormData(prev => ({ ...prev, username: e.target.value }));
+            setError('');
+            setUsername(e.target.value);
           }}
           className="w-full px-4 py-2 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 
                      focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20
@@ -78,10 +76,10 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         <motion.input
           whileFocus={{ scale: 1.01 }}
           type="password"
-          value={formData.password}
+          value={password}
           onChange={(e) => {
-            setError(null);
-            setFormData(prev => ({ ...prev, password: e.target.value }));
+            setError('');
+            setPassword(e.target.value);
           }}
           className="w-full px-4 py-2 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 
                      focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20
@@ -123,4 +121,4 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   );
 };
 
-export default LoginForm; 
+export default LoginForm;
