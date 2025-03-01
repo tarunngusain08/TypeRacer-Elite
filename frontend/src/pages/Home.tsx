@@ -1,7 +1,6 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Trophy, Users, Keyboard, Sparkles, Crown, Activity, LogOut } from 'lucide-react';
+import { Trophy, Crown} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AnimatedBackground from '../components/ui/AnimatedBackground';
 
@@ -14,16 +13,16 @@ const Home = () => {
   }
 
   const features = [
-    {
-      icon: <Keyboard className="w-6 h-6" />,
-      title: "Real-time Racing",
-      description: "Compete with players worldwide in real-time typing races"
-    },
-    {
-      icon: <Activity className="w-6 h-6" />,
-      title: "Track Progress",
-      description: "Monitor your WPM and accuracy with detailed statistics"
-    },
+    // {
+    //   icon: <Keyboard className="w-6 h-6" />,
+    //   title: "Real-time Racing",
+    //   description: "Compete with players worldwide in real-time typing races"
+    // },
+    // {
+    //   icon: <ActivitySquare className="w-6 h-6" />,
+    //   title: "Track Progress",
+    //   description: "Monitor your WPM and accuracy with detailed statistics"
+    // },
     {
       icon: <Crown className="w-6 h-6" />,
       title: "Global Rankings",
@@ -69,7 +68,7 @@ const Home = () => {
                          border border-gray-700/50 backdrop-blur-sm
                          transition-colors duration-200"
               >
-                <LogOut size={18} />
+                {/* <LogOut size={18} /> */}
                 <span>Logout</span>
               </motion.button>
             </div>
@@ -133,7 +132,7 @@ const Home = () => {
                   whileTap={{ scale: 0.98 }}
                 >
                   <span className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
+                    {/* <Users2 className="w-5 h-5" /> */}
                     Play Now
                   </span>
                 </motion.button>
