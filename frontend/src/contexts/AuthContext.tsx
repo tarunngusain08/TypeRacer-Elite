@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authApi } from '../services/auth.service';
+import axios from '../services/axios';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -82,12 +82,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const isValid = checkTokenExpiration();
           if (isValid) {
             // Verify token with backend
-            const userData = await authApi.getMe();
+            const userData = await axios.get('/auth/me');
             if (userData) {
               setState(prev => ({
                 ...prev,
                 isAuthenticated: true,
-                user: userData,
+                user: userData.data,
                 isLoading: false
               }));
             } else {
@@ -115,8 +115,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const token = localStorage.getItem('accessToken');
       if (token) {
-        const userData = await authApi.getMe();
-        setState(prev => ({ ...prev, user: userData }));
+        const userData = await axios.get('/auth/me');
+        setState(prev => ({ ...prev, user: userData.data }));
       }
     } catch (error) {
       console.error('Failed to fetch user data:', error);
@@ -127,10 +127,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      const response = await authApi.login(username, password);
+      const response = await axios.post('/auth/login', { username, password });
+      localStorage.setItem('accessToken', response.data.tokens.accessToken);
+      localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
       setState({
         isAuthenticated: true,
-        user: response.user,
+        user: response.data.user,
         isLoading: false,
         error: null
       });
@@ -146,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (username: string, password: string) => {
-    await authApi.register(username, password);
+    await axios.post('/auth/register', { username, password });
     // After registration, user needs to login
   };
 
@@ -188,4 +190,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = () => useContext(AuthContext); 
+export const useAuth = () => useContext(AuthContext);
