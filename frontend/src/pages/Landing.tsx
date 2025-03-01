@@ -1,11 +1,50 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Users, Keyboard, Crown } from 'lucide-react';
+import { Trophy, Crown } from 'lucide-react';
+import { FaUsers, FaChartBar } from 'react-icons/fa';
 import AnimatedBackground from '../components/ui/AnimatedBackground';
 
 const Landing = () => {
   const navigate = useNavigate();
+
+  const features = [
+    {
+      icon: <FaUsers className="w-6 h-6" />,
+      title: "Real-time Racing",
+      description: "Compete with players worldwide in real-time typing races"
+    },
+    {
+      icon: <FaChartBar className="w-6 h-6" />,
+      title: "Track Progress",
+      description: "Monitor your WPM and accuracy with detailed statistics"
+    },
+    {
+      icon: <Crown className="w-6 h-6" />,
+      title: "Global Rankings",
+      description: "Climb the leaderboard and become the typing champion"
+    }
+  ];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.5
+      }
+    }
+  };
 
   return (
     <>
@@ -72,6 +111,64 @@ const Landing = () => {
                 </motion.button>
               </motion.div>
             </motion.div>
+
+            {/* Features Section */}
+            <motion.div 
+              className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto px-4 py-16"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {features.map((feature, index) => (
+                <motion.div
+                  key={index}
+                  variants={itemVariants}
+                  whileHover={{ y: -5 }}
+                  className="p-6 rounded-xl bg-gray-800/30 backdrop-blur-sm border border-gray-700/50
+                           hover:bg-gray-700/30 transition-all duration-300"
+                >
+                  <div className="w-12 h-12 mb-4 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400">
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-gray-400">{feature.description}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Stats Section */}
+            <motion.div 
+              className="text-center py-16 bg-gradient-to-r from-purple-900/20 via-pink-900/20 to-blue-900/20"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <motion.h2 
+                className="text-3xl font-bold mb-12"
+                variants={itemVariants}
+              >
+                Join the Elite Typing Community
+              </motion.h2>
+              
+              <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto px-4">
+                {[
+                  { number: "10K+", label: "Active Players" },
+                  { number: "1M+", label: "Races Completed" },
+                  { number: "150+", label: "Countries" }
+                ].map((stat, index) => (
+                  <motion.div
+                    key={index}
+                    variants={itemVariants}
+                    className="p-6"
+                  >
+                    <div className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
+                      {stat.number}
+                    </div>
+                    <div className="text-gray-400 mt-2">{stat.label}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </div>
         </div>
       </div>
@@ -79,4 +176,4 @@ const Landing = () => {
   );
 };
 
-export default Landing; 
+export default Landing;
