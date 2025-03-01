@@ -1,17 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import LoginForm from '../components/auth/LoginForm';
-import { Trophy } from 'lucide-react';
 import ParticlesBackground from '../components/ui/ParticlesBackground';
 import GlassCard from '../components/ui/GlassCard';
 import AnimatedHeader from '../components/ui/AnimatedHeader';
+import axios from '../services/axios';
 
 const Login = () => {
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLoginSuccess = () => {
-    navigate('/');
+  const handleLogin = async (username: string, password: string) => {
+    try {
+      const response = await axios.post('/auth/login', { username, password });
+      localStorage.setItem('accessToken', response.data.tokens.accessToken);
+      localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
+      navigate('/landing'); // Redirect to landing page
+    } catch (err) {
+      setError('Invalid credentials');
+    }
   };
 
   return (
@@ -30,7 +38,7 @@ const Login = () => {
           />
 
           <div className="mt-8">
-            <LoginForm onSuccess={handleLoginSuccess} />
+            <LoginForm onSuccess={handleLogin} />
           </div>
 
           <motion.p 
@@ -55,4 +63,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Login;
