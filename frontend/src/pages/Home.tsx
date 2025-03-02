@@ -58,7 +58,7 @@ const Home = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-3xl font-bold">Welcome, {user?.username}!</h1>
+              <h1 className="text-3xl font-bold">Welcome, {user?.username || 'User'}!</h1>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
