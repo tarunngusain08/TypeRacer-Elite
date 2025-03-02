@@ -6,10 +6,10 @@ import { authApi } from '../../services/auth.service';
 import { Check, X, Eye, EyeOff, Loader } from 'lucide-react';
 
 interface RegisterFormProps {
-  onSuccess: () => void;
+  onSuccess: (e: React.FormEvent) => Promise<void>;
 }
 
-const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
+const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
   const { register } = useAuth();
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
@@ -127,7 +127,7 @@ const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
     try {
       await register(formData.username.trim(), formData.password);
       showToast('Registration successful! Please sign in.', 'success');
-      onSuccess();
+      onSuccess(e);
     } catch (err: any) {
       console.error('Registration error:', err);
       let errorMessage = 'Registration failed. ';
@@ -303,4 +303,4 @@ const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
   );
 };
 
-export default RegisterForm; 
+export default RegisterForm;
