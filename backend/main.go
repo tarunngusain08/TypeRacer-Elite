@@ -48,14 +48,16 @@ func main() {
 	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST")
 	api.HandleFunc("/auth/me", authHandler.GetMe).Methods("GET")
 	api.HandleFunc("/auth/check-username/{username}", authHandler.CheckUsername).Methods("GET")
+	api.HandleFunc("/auth/verify-token", authHandler.VerifyToken).Methods("GET")
 
 	// Game routes
 	api.HandleFunc("/games", gameHandler.CreateGame).Methods("POST")
 	api.HandleFunc("/games/{id}", gameHandler.GetGame).Methods("GET")
 	api.HandleFunc("/games/{id}/join", gameHandler.JoinGame).Methods("POST")
 	api.HandleFunc("/ws/{gameId}", gameHandler.HandleWebSocket)
+	api.HandleFunc("/games/new/progress", gameHandler.CreateGameProgress).Methods("POST")
 
-	// New routes
+	// GameProgress routes
 	api.HandleFunc("/games/{id}/progress", gameHandler.UpdateProgress).Methods("POST")
 	api.HandleFunc("/games/{id}/end", gameHandler.EndGame).Methods("POST")
 	api.HandleFunc("/leaderboard", leaderboardHandler.GetLeaderboard).Methods("GET")
