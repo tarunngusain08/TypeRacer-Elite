@@ -3,11 +3,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { motion } from 'framer-motion';
-import { ApiError } from '../../utils/errorHandler';
 import { Alert } from '../ui/Alert';
 
 interface LoginFormProps {
-  onSuccess: (username: string, password: string) => Promise<void>;
+  onSuccess: (e: React.FormEvent) => Promise<void>;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
@@ -26,7 +25,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     try {
       await login(username.trim(), password);
       showToast('Login successful!', 'success');
-      await onSuccess(username.trim(), password);
+      await onSuccess(e);
     } catch (err: any) {
       console.error('Login error:', err);
       setError('Invalid credentials');
