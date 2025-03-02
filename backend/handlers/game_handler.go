@@ -157,11 +157,12 @@ func (h *GameHandler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
 			player.Accuracy = progressUpdate.Accuracy
 
 			// Create a game event
+			eventData, _ := json.Marshal(progressUpdate)
 			event := models.GameEvent{
 				Timestamp: time.Now(),
 				PlayerID:  progressUpdate.PlayerID,
 				Type:      "progress",
-				Data:      progressUpdate,
+				Data:      eventData,
 			}
 			game.ReplayData = append(game.ReplayData, event)
 			break
@@ -193,10 +194,11 @@ func (h *GameHandler) EndGame(w http.ResponseWriter, r *http.Request) {
 	models.Mu.Lock()
 	game.Status = models.Finished
 	endTime := time.Now()
+	eventData, _ := json.Marshal(map[string]interface{}{"endTime": endTime})
 	game.ReplayData = append(game.ReplayData, models.GameEvent{
 		Timestamp: endTime,
 		Type:      "end",
-		Data:      map[string]interface{}{"endTime": endTime},
+		Data:      eventData,
 	})
 	models.Mu.Unlock()
 
@@ -222,4 +224,20 @@ func (h *GameHandler) broadcastToGame(gameID string, message []byte) {
 			}
 		}
 	}
+}
+
+func (h *GameHandler) CreateGameProgress(w http.ResponseWriter, r *http.Request) {
+	var progress models.GameProgress
+	if err := json.NewDecoder(r.Body).Decode(&progress); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.db.Create(&progress).Error; err != nil {
+		http.Error(w, "Error creating game progress", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(progress)
 }
