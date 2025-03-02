@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"encoding/json"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -36,6 +38,14 @@ type Game struct {
 	TournamentID string      `json:"tournamentId,omitempty"`
 }
 
+type GameProgress struct {
+	ID       uuid.UUID `gorm:"type:uuid;primary_key;"`
+	GameID   uuid.UUID `gorm:"type:uuid;"`
+	PlayerID uuid.UUID `gorm:"type:uuid;"`
+	WPM      int       `gorm:"default:0"`
+	Accuracy float64   `gorm:"default:0"`
+}
+
 type Player struct {
 	ID       uuid.UUID `gorm:"type:uuid;primary_key;"`
 	UserID   uuid.UUID `gorm:"type:uuid;"`
@@ -48,10 +58,11 @@ type Player struct {
 }
 
 type GameEvent struct {
-	Timestamp time.Time `json:"timestamp"`
-	PlayerID  string    `json:"playerId"`
-	Type      string    `json:"type"`
-	Data      any       `json:"data"`
+	ID        uint            `gorm:"primaryKey"`
+	Timestamp time.Time       `json:"timestamp"`
+	PlayerID  string          `json:"playerId"`
+	Type      string          `json:"type"`
+	Data      json.RawMessage `json:"data"` // Change to json.RawMessage
 }
 
 func (g *Game) BeforeCreate(tx *gorm.DB) error {
