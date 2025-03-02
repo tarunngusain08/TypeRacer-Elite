@@ -8,16 +8,20 @@ import AnimatedHeader from '../components/ui/AnimatedHeader';
 import axios from '../services/axios';
 
 const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = async (username: string, password: string) => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      const response = await axios.post('/auth/login', { username, password });
+      const response = await axios.post('/auth/login', { email, password });
       localStorage.setItem('accessToken', response.data.tokens.accessToken);
       localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
-      navigate('/landing'); // Redirect to landing page
-    } catch (err) {
+      navigate('/'); // Redirect to home page
+    } catch (error) {
+      console.error('Login failed', error);
       setError('Invalid credentials');
     }
   };
