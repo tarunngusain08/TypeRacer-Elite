@@ -12,13 +12,15 @@ func AutoMigrate(db *gorm.DB) error {
 	log.Println("Starting database migration...")
 
 	// Drop existing tables if they exist
-	if err := db.Migrator().DropTable(&models.User{}, &models.Game{}, &models.Player{}, &models.Tournament{}); err != nil {
+	if err := db.Migrator().DropTable(&models.User{}, &models.Game{}, &models.Player{},
+		&models.Tournament{}, &models.Round{}, &models.GameEvent{}, &models.GameProgress{}); err != nil {
 		log.Printf("Failed to drop tables: %v", err)
 		// Continue even if drop fails
 	}
 
 	// Create tables with detailed logging
-	tables := []interface{}{&models.User{}, &models.Game{}, &models.Player{}, &models.Tournament{}, &models.Round{}}
+	tables := []interface{}{&models.User{}, &models.Game{}, &models.Player{},
+		&models.Tournament{}, &models.Round{}, &models.GameEvent{}, &models.GameProgress{}}
 	for _, table := range tables {
 		log.Printf("Attempting to migrate table for model: %T", table)
 
