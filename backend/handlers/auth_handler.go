@@ -269,3 +269,25 @@ func (h *AuthHandler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 		"exists": exists,
 	})
 }
+
+func (h *AuthHandler) VerifyToken(w http.ResponseWriter, r *http.Request) {
+	tokenString := r.Header.Get("Authorization")
+	if tokenString == "" {
+		http.Error(w, "Authorization header is required", http.StatusUnauthorized)
+		return
+	}
+
+	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte("your-secret-key"), nil // Use env variable in production
+	})
+
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Token is valid"})
+}
